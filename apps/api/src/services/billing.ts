@@ -19,7 +19,7 @@ import { audit } from '../lib/audit';
 import { AppError, badRequest, conflict, notFound } from '../lib/errors';
 import type { PaymentProvider, WebhookEvent as ProviderEvent } from '../lib/payments';
 import { Plan } from '../models/content';
-import { Outbox, User } from '../models/core';
+import { Outbox, Setting, User } from '../models/core';
 import { CreditLot, Order, Payment, Subscription } from '../models/billing';
 import { WebhookEvent } from '../models/verification';
 import * as coupons from './coupons';
@@ -695,6 +695,7 @@ export async function confirmCheckout(
 /** Every 15 minutes: pending orders and subscriptions are asked about, stuck webhooks retried, stale orders closed. */
 export async function reconcile(ctx: AppContext, now = new Date()) {
   if (!ctx.payments) return { orders: 0, subscriptions: 0, retried: 0 };
+  const startedAt = new Date();
   const tenMin = new Date(now.getTime() - 10 * 60_000);
   const day = new Date(now.getTime() - 24 * 3_600_000);
   let orders = 0;
@@ -730,7 +731,19 @@ export async function reconcile(ctx: AppContext, now = new Date()) {
     updatedAt: { $lte: new Date(now.getTime() - 60_000) },
   }).limit(100);
   for (const e of stuck) if (await processStored(ctx, e.eventId)) retried++;
-  return { orders, subscriptions, retried };
+  const result = { orders, subscriptions, retried };
+  await Setting.updateOne({ key: 'billing_reconcile' }, { $set: { value: { ...result, at: startedAt.toISOString(), ms: Date.now() - startedAt.getTime() } } }, { upsert: true });
+  return result;
+}
+
+export async function reconcileStatus() {
+  const [last, pendingOrders, pendingSubs, stuck] = await Promise.all([
+    Setting.findOne({ key: 'billing_reconcile' }).lean(),
+    Order.countDocuments({ status: 'created' }),
+    Subscription.countDocuments({ status: { $in: ['created', 'authenticated', 'pending', 'halted'] } }),
+    WebhookEvent.countDocuments({ provider: 'razorpay', processedAt: { $exists: false } }),
+  ]);
+  return { lastRun: last?.value ?? null, pendingOrders, pendingSubscriptions: pendingSubs, unprocessedWebhooks: stuck };
 }
 
 /** Ends access whose grace window or paid period has passed, and lapses expired credits. */

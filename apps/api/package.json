@@ -78,6 +78,7 @@
     "./support-jobs": "./src/jobs/supportJobs.ts",
     "./referral-jobs": "./src/jobs/referralJobs.ts",
     "./growth-jobs": "./src/jobs/growthJobs.ts",
+    "./sla-jobs": "./src/jobs/slaJobs.ts",
     "./keys": "./src/lib/keys.ts",
     "./sentry": "./src/lib/sentry.ts"
   }

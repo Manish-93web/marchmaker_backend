@@ -7,6 +7,7 @@ import { expireAndRemind, releaseDueMatches, runForMember, runNightlyIfDue } fro
 import { pollPendingKyc, processKycEvent, purgeExpiredEvidence } from '@marchmaker/api/verification-jobs';
 import { handleInvoiceCreated, lapseAccess, reconcile } from '@marchmaker/api/billing-jobs';
 import { sendCheckIns } from '@marchmaker/api/growth-jobs';
+import { sendSlaAlerts } from '@marchmaker/api/sla-jobs';
 import { releaseReferralRewards } from '@marchmaker/api/referral-jobs';
 import { closeStaleTickets } from '@marchmaker/api/support-jobs';
 import { dispatchEvent, sendDueDeliveries } from '@marchmaker/api/notification-jobs';
@@ -66,6 +67,7 @@ export async function runSweeps(ctx: WorkerContext): Promise<void> {
   await closeStaleTickets();
   await releaseReferralRewards();
   await sendCheckIns();
+  await sendSlaAlerts(ctx);
 }
 
 /** Runs every minute: releases matches whose cool-off ended and wakes snoozed ones. */

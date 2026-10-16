@@ -322,6 +322,8 @@ describe('live stream', () => {
       req.on('error', () => undefined);
     });
     expect(received).toContain('"unread":1');
-    server.close();
+    // Let the server notice the closed stream and close its change stream before the DB goes away.
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await new Promise((resolve) => setTimeout(resolve, 400));
   });
 });

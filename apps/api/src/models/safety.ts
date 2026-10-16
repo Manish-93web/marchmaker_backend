@@ -57,6 +57,7 @@ const ticketSchema = new Schema(
     lastMessageAt: { type: Date, default: Date.now },
     lastMessageBy: { type: String, enum: ['member', 'staff'] },
     resolvedAt: Date,
+    slaAlertedAt: Date,
   },
   base,
 );

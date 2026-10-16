@@ -15,7 +15,7 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { authedUser, requirePermission } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import type { MockPaymentProvider } from '../lib/payments';
-import { Payment } from '../models/billing';
+import { Invoice, Payment } from '../models/billing';
 import { WebhookEvent } from '../models/verification';
 import * as admin from '../services/billingAdmin';
 import * as billing from '../services/billing';
@@ -250,6 +250,33 @@ export function adminBillingRouter(ctx: AppContext): Router {
       res.json({ processed: ok });
     }),
   );
+  r.get(
+    '/reconcile/status',
+    requirePermission('payment.view'),
+    asyncHandler(async (_req, res) => {
+      res.set('Cache-Control', 'no-store').json(await billing.reconcileStatus());
+    }),
+  );
+  r.get(
+    '/invoices',
+    requirePermission('payment.view'),
+    validate({ query: admin.invoiceQuery }),
+    asyncHandler(async (req, res) => {
+      res.set('Cache-Control', 'no-store').json(await admin.listInvoices(req.query as never));
+    }),
+  );
+  r.get(
+    '/invoices/:id/download',
+    requirePermission('payment.view'),
+    validate({ params: idParams }),
+    asyncHandler(async (req, res) => {
+      const inv = await Invoice.findById(String(req.params.id)).select('userId number');
+      if (!inv) throw new AppError(404, 'NOT_FOUND', 'We could not find that');
+      const a = actor(req);
+      await audit(req, { action: 'billing.invoice_downloaded', actorId: a.userId, actorRoles: a.roles, subjectType: 'invoice', subjectId: String(inv._id) });
+      res.set('Cache-Control', 'no-store').json({ url: await invoicing.downloadUrl(ctx, String(inv.userId), String(inv._id)) });
+    }),
+  );
   r.post(
     '/reconcile',
     requirePermission('payment.refund'),
@@ -293,6 +320,17 @@ export function adminBillingRouter(ctx: AppContext): Router {
     requirePermission('plan.manage'),
     asyncHandler(async (_req, res) => {
       res.json({ items: await admin.listPlans() });
+    }),
+  );
+  r.post(
+    '/plans',
+    requirePermission('plan.manage'),
+    validate({ body: admin.planCreateSchema }),
+    asyncHandler(async (req, res) => {
+      const a = actor(req);
+      const out = await admin.createPlan(req.body);
+      await audit(req, { action: 'plan.created', actorId: a.userId, actorRoles: a.roles, subjectType: 'plan', subjectId: req.body.code, after: req.body });
+      res.status(201).json(out);
     }),
   );
   r.put(

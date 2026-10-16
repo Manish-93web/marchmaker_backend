@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DEFAULT_PACKS, DEFAULT_PLANS, BILLING_INTERVALS } from '@marchmaker/shared';
-import { notFound } from '../lib/errors';
+import { conflict, notFound } from '../lib/errors';
 import { Plan } from '../models/content';
 import { User } from '../models/core';
 import { Invoice, Payment, Subscription } from '../models/billing';
@@ -147,4 +147,45 @@ export async function updatePlan(code: string, patch: z.infer<typeof planPatchSc
     { upsert: true },
   );
   return (await listPlans()).find((p) => p.code === code);
+}
+
+export const planCreateSchema = planPatchSchema.extend({
+  code: z.string().regex(/^[a-z][a-z0-9_]{1,19}$/, 'Use lowercase letters, digits and underscores'),
+  kind: z.enum(['pack', 'subscription']),
+  name: z.string().trim().min(2).max(60),
+  credits: z.number().int().min(0).max(100),
+  prices: z.partialRecord(z.enum(BILLING_INTERVALS), z.number().int().min(0).max(50_000_000)),
+});
+
+/** New plans start inactive so the price can be checked before anyone can buy; archive = active:false. */
+export async function createPlan(input: z.infer<typeof planCreateSchema>) {
+  const seed = [...DEFAULT_PLANS, ...DEFAULT_PACKS].some((p) => p.code === input.code);
+  if (seed || (await Plan.exists({ code: input.code }))) throw conflict('A plan with that code already exists');
+  await Plan.create({ ...input, features: input.features ?? [], active: input.active ?? false, sortOrder: input.sortOrder ?? 50 });
+  return (await listPlans()).find((p) => p.code === input.code);
+}
+
+const escapeRegex = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, (c) => '\\' + c);
+
+export const invoiceQuery = z.object({
+  q: z.string().trim().max(40).optional(),
+  kind: z.enum(['invoice', 'credit_note']).optional(),
+  cursor: z.string().regex(/^[a-f\d]{24}$/i).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+
+export async function listInvoices(q: z.infer<typeof invoiceQuery>) {
+  const rows = await Invoice.find({
+    ...cursorFilter(q.cursor),
+    ...(q.kind ? { kind: q.kind } : {}),
+    ...(q.q ? { number: { $regex: '^' + escapeRegex(q.q), $options: 'i' } } : {}),
+  })
+    .sort({ _id: -1 })
+    .limit(q.limit + 1)
+    .lean();
+  const page = rows.slice(0, q.limit);
+  return {
+    items: page.map((i) => ({ id: String(i._id), number: i.number, kind: i.kind, userId: String(i.userId), issuedAt: i.issuedAt, totalPaise: i.tax?.totalPaise ?? 0 })),
+    nextCursor: rows.length > q.limit ? String(page[page.length - 1]?._id) : null,
+  };
 }

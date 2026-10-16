@@ -72,6 +72,8 @@ const envSchema = z.object({
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default('mailto:support@marchmaker.local'),
   ONCALL_EMAIL: z.string().email().optional(),
+  /** Comma-separated E.164 numbers that get a WhatsApp page for critical and overdue safety reports. */
+  ONCALL_WHATSAPP: z.string().optional(),
   CALLS_PROVIDER: z.enum(['none', 'mock', 'exotel']).default('mock'),
   CALLS_WEBHOOK_SECRET: z.string().min(8).default('dev-only-calls-webhook-secret'),
   CALLS_CALLER_ID: z.string().optional(),

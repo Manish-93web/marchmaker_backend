@@ -13,6 +13,7 @@ import { adminRouter } from './admin';
 import { SOCIAL_PREFIXES, socialRouter } from './social';
 import { adminMessagingRouter } from './messaging';
 import { adminSystemRouter } from './system';
+import { adminContentRouter, publicFaqRouter } from './adminContent';
 import { EXTRAS_PREFIXES, adminExtrasRouter, extrasRouter, publicExtrasRouter } from './extras';
 import { GROWTH_PREFIXES, adminGrowthRouter, growthRouter, publicGrowthRouter } from './growth';
 import { REFERRAL_PREFIXES, adminReferralsRouter, referralsRouter } from './referrals';
@@ -48,6 +49,7 @@ export function v1Router(ctx: AppContext): Router {
   r.use('/', appealsRouter(ctx));
   r.use('/', publicGrowthRouter(ctx));
   r.use('/', publicExtrasRouter(ctx));
+  r.use('/', publicFaqRouter());
   r.use('/', contentRouter(ctx));
   // Member routes need a session. Guarding by prefix (not by mounting under it) keeps
   // unknown paths answering 404 instead of 401.
@@ -71,6 +73,7 @@ export function v1Router(ctx: AppContext): Router {
   r.use('/admin', adminExtrasRouter(ctx));
   r.use('/admin', adminMessagingRouter(ctx));
   r.use('/admin', adminSystemRouter(ctx));
+  r.use('/admin', adminContentRouter(ctx));
   r.use('/verification', verificationRouter(ctx));
   r.use('/admin/verification', adminVerificationRouter(ctx));
   r.use('/admin', adminRouter(ctx));

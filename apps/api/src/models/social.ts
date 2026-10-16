@@ -78,6 +78,9 @@ const reportSchema = new Schema(
     claimedAt: Date,
     slaDueAt: { type: Date, index: true },
     escalated: { type: Boolean, default: false },
+    slaAlertedAt: Date,
+    /** Set when staff raise the report from a support ticket. */
+    sourceTicketId: Schema.Types.ObjectId,
     resolution: { action: String, reason: String, by: Schema.Types.ObjectId, at: Date },
   },
   base,
