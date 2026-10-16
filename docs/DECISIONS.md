@@ -1,0 +1,90 @@
+# Decisions
+
+| ID | Decision | Why |
+|---|---|---|
+| D-001 | Two repos (`marchmaker_backend`, `marchmaker_frontend`) instead of one monorepo | Requested by the project owner; matches existing git remotes. |
+| D-002 | Frontend consumes `@marchmaker/shared` via `file:../marchmaker_backend/packages/shared` | Keeps one source of truth for schemas/state machines without publishing a package. Both repos must be checked out side by side (local and CI). Revisit by publishing to a private registry before native apps. |
+| D-003 | Existing prototype moved to `_legacy_prototype/` in each repo (git-ignored) | It had no commits; moved instead of deleted so nothing is lost. Safe to delete after review. |
+| D-004 | Package manager pnpm 9, TypeScript 5.9, ESLint 8 | TS 7 has no compiler API, which breaks tsup's d.ts build. Pin until tooling catches up. |
+| D-005 | `apps/worker` imports models and config from `@marchmaker/api` via `exports` mapped to source | Same codebase, separate process, no duplicated schemas. Worker is bundled with tsup (`noExternal`). |
+| D-006 | Web app is a Vite React SPA with pre-rendered public pages (spec Section 2) | The earlier Next.js prototype was set aside. |
+| D-007 | Identity documents: only masked Aadhaar accepted | Aadhaar Act / UIDAI guidance; instruct users to upload masked copies. |
+| D-008 | GST SAC code and rate are env/admin-configurable, not hard-coded | Must be confirmed with a CA before launch. |
+| D-009 | Minimum age 18 (woman) / 21 (man); non-binary members use 21 | Conservative reading of the Prohibition of Child Marriage Act. Confirm with counsel. |
+| D-010 | Docker is not installed on the dev machine used for Phase 1 | `docker-compose.yml` and Dockerfiles are written but unverified locally; tests use `mongodb-memory-server`. |
+| D-011 | Listed prices are GST-inclusive; invoices split out CGST/SGST/IGST | The brief says "incl. GST shown separately". Inclusive pricing matches Indian consumer norms. Confirm with a CA. |
+| D-012 | Plans, packs, success stories and guides are served from the API; seed defaults live in `@marchmaker/shared` (`DEFAULT_PLANS`) | One list feeds the seed script, the API fallback on a fresh install and the pre-render fallback. Admin edits are never overwritten by re-seeding. |
+| D-013 | No testimonials are shown until an admin publishes a story with recorded consent | Fabricated reviews would be misleading. The section and page show an honest empty state. |
+| D-014 | Public pages are pre-rendered with a custom SSR script (React Router static handler) instead of `vite-ssg` | Works with data routers and lazy routes; the client replaces the HTML with `createRoot`, so there is no hydration-mismatch risk. |
+| D-015 | Legal text is fetched from the API at build time for pre-rendering, and at runtime otherwise | The DB is the source of truth (versioned, re-acceptance). Build with `PRERENDER_API_URL` pointing at the API so crawlers get the full text. |
+| D-016 | Submitted and approved profiles are locked against member edits (409 `PROFILE_LOCKED`) | The journey machine has no "approved -> in review" edge yet. An admin "reopen for changes" action arrives with the admin console (Phase 7). |
+| D-017 | Autosave sends partial step data; `null` clears a field; every save carries `If-Match: <version>` | Lets two tabs/devices be detected reliably. A 409 returns the server copy so the member chooses per field. |
+| D-018 | Photo pipeline re-encodes everything to WebP and deletes the raw upload | Re-encoding drops EXIF/GPS and any embedded payload. Photos then wait for the admin photo queue; automated checks (face, NSFW) sit behind `ImageModeration`, a no-op until a provider is configured. |
+| D-019 | Pool-size hint is a 4-level bucket computed from submitted/approved profiles; income is not part of it | Exact counts could identify members; income is encrypted and cannot be queried. |
+| D-020 | Server transcription is OpenAI Whisper behind `TRANSCRIPTION_PROVIDER` + the `voice_transcription_server` flag; audio is processed in memory and never stored | Meets the "delete audio after transcription" rule by not persisting it at all. |
+| D-021 | Assessment results are generated once at completion and stored; nothing numeric is ever returned to members | Satisfies "words, not scores" structurally rather than by UI convention. Internal vectors are read only through `dimensionVectors()`. |
+| D-022 | Question banks are seeded v1 from `@marchmaker/shared` and fall back to the bundled bank if the DB has none | A fresh install works before seeding; admin edits (Phase 7) publish new versions. |
+| D-023 | The question content (wording, dimensions, option values) is a first draft by engineering | It must be reviewed by a qualified psychologist or relationship counsellor before launch. |
+| D-024 | Verification only opens once the profile is approved (journey `profile_approved`) | Follows the journey state machine in the brief. Until the admin console exists (Phase 7) approval is set directly in the database for testing. |
+| D-025 | KYC automation can approve but never reject | A wrongly rejected real person is a worse failure than a manual review. Every doubt goes to a verifier. |
+| D-026 | A re-upload request deletes the old object | Otherwise the same file could be resubmitted unchanged. |
+| D-027 | Vendor-specific KYC mapping is not built; a generic REST contract plus a mock are | Each vendor's API needs its own sandbox credentials. See docs/KYC.md. |
+| D-028 | The admin console's own labels are plain English in the components, not in i18n files | Staff-only UI with English as the working language. Member-facing apps keep every string externalised. |
+| D-029 | Role permissions live in the `rolepermissions` collection with a 15 s cache; `super_admin` always has everything | Matches "editable by super_admin" without a deploy, and a mistake in the matrix can never lock out the last administrator. |
+| D-030 | `member.view_full` implies basic access (either permission opens the member page) | A matchmaker without view_basic would otherwise be unable to open the members they review. |
+| D-031 | Profile approval does not require approved photos | Photos and profile are separate queues so neither blocks the other. Matching (Phase 8) will require a primary approved photo. |
+| D-032 | Question banks are edited as JSON with server-side validation, not with a form builder | A structured editor adds little for a handful of banks edited rarely; the server rejects bad definitions with field-level messages. |
+| D-033 | No "seeking gender" field yet: pairs must be of different genders, or include a non-binary member | The brief has no sexual-orientation attribute. Add an explicit preference before launch if needed. |
+| D-034 | An unknown value fails a must-have | A must-have the system cannot confirm should not be assumed met. Flexible preferences treat unknown as half. |
+| D-035 | `topN` caps suggestions per member (greedy by score), not per proposer | Per-proposer caps let popular members accumulate many suggestions and overload reviewers. |
+| D-036 | Matching requires an approved photo | An introduction card without a photo is a poor experience; photo approval is a quick queue. |
+| D-037 | A reviewer cannot close their own escalation | Escalation exists for a second opinion. |
+| D-038 | A credit is reserved at acceptance and consumed at unlock; both members pay one | Matches "credit is released if they decline or do not reply". Held credits are tracked separately so the available balance is always honest. |
+| D-039 | The other member's acceptance is not revealed before unlock | Avoids pressure and "they already said yes" bias; equal footing. |
+| D-040 | Atomic business logic uses MongoDB transactions (replica set required, also in tests) | Credit, state and thread changes must succeed or fail together. Atlas and the local compose file provide a replica set. |
+| D-041 | The contact-information filter is heuristic and the profanity list is small | Human review and the report flow are the real safeguard; the filter prevents accidental leaks and low-effort evasion. |
+| D-042 | Coupons discount **packs** directly (we compute the order amount); on **subscriptions** only coupons that carry a Razorpay offer id apply | Razorpay owns the recurring amount, so a discount must exist as a Razorpay offer. Pack orders are ours, so we can price them exactly. |
+| D-043 | A member with no state on file is invoiced as intra-state (CGST + SGST); a GSTIN overrides the state | Charging IGST with no evidence of another state is the worse error. Members can add their state any time and it applies to future invoices. |
+| D-044 | Price edits apply to new checkouts; running subscriptions keep their provider plan | Razorpay plans are immutable. A changed price creates a new provider plan on the next checkout. |
+| D-045 | Subscription credits last through the cycle they were granted in and the one after (roll over once), then lapse; pack credits never expire | Matches the plan wording. Spending takes the soonest-expiring credits first. |
+| D-046 | Credits returned from a declined or expired introduction come back as non-expiring | Simpler than tracking which lot a held credit came from; slightly generous to members, never unfair. |
+| D-047 | The browser's checkout callback never grants anything: it triggers a server-side lookup with the provider | Only webhooks and provider reads are trusted; a forged callback cannot create credits. |
+| D-048 | Invoices are rendered with pdfkit in the worker (not @react-pdf/renderer) | A plain tax invoice needs no React layout engine, and pdfkit is far lighter to run and bundle. pdfkit stays external to the worker bundle because it reads font files at runtime. |
+| D-049 | Pause is not offered; members cancel at period end and may resubscribe | The brief's states have no `paused`, and a pause adds a state that reporting and credit expiry would have to reason about. |
+| D-050 | Webhooks are stored first, processed inline, and retried by a sweep (every 10 minutes) if processing failed | The provider always gets a fast 200 once the event is persisted; nothing is lost on a crash. The sweep runs with the other worker sweeps. |
+| D-051 | No notification when the other person accepts first | Revealing a one-sided yes breaks D-039 and adds pressure. Members hear only about unlocks, declines and expiries. |
+| D-052 | Notification copy is a fixed neutral catalog, never built from member content | A push or email preview can be read by anyone near the device; names, scores and message text stay inside the app. |
+| D-053 | Quiet hours defer email, WhatsApp and push but not in-app; critical messages ignore them | Matches what members expect from "do not disturb" while payment and safety problems still arrive. |
+| D-054 | WhatsApp is Premium and Concierge only, template messages, consent and verified phone required | Matches the plan table and Meta policy; consent is the same record used for DPDP. |
+| D-055 | Live updates use SSE backed by a change stream, with polling as fallback | Works across API and worker processes without adding a pub/sub dependency; the replica set is already required. |
+| D-056 | Several worker consumers may subscribe to one event; all must be idempotent | Lets billing, notifications and matching react independently to the same fact. |
+| D-057 | The reporter always receives the same neutral outcome message | Telling a reporter what was done to someone risks retaliation and breaches the reported member's privacy. |
+| D-058 | Warnings are shown to the member as a written note, not auto-generated text | A person decides what is said; the system only delivers it and records it. |
+| D-059 | Whoever suspended an account cannot decide its appeal, and whoever escalated a report cannot close it | A second pair of eyes on every contested decision. |
+| D-060 | Appeals are public and respond identically for any email | A suspended member cannot sign in, and the form must not reveal who is on the platform. |
+| D-061 | Reading a reported conversation needs its own permission and is always audited | Private messages are the most sensitive data staff can reach. |
+| D-062 | Contact-form help and grievance requests become tickets | Gives them an owner and a response clock (and supports the DPDP grievance officer duty). |
+| D-063 | Referral rewards are released after a hold, and only if the first purchase was paid in cash and not refunded | Stops refund abuse and wallet recycling; the hold is the refund window. |
+| D-064 | The wallet applies to introduction packs only, not subscriptions | Subscription amounts are owned by Razorpay; a wallet discount there would need provider offers. |
+| D-065 | Self-referral signals flag a referral for human review rather than blocking sign-up | Shared networks (families, offices) are common; a person decides, and the member is never accused. |
+| D-066 | A fully wallet-paid pack has no payment record or invoice | No cash was received; wallet credit is a promotional discount on the (nil) taxable amount. Confirm treatment with the accountant before launch. |
+| D-067 | Reward amounts are snapshotted when a referral qualifies | Changing the programme later does not change what members were promised. |
+| D-068 | Operational metrics are computed from first-party data without consent; behavioural analytics need consent | Running the service needs aggregates of its own records; tracking browsing behaviour does not, and the consent banner already promises that. |
+| D-069 | Analytics stores only allow-listed keys and URL-safe values, and a keyed hash of the member id | Free text and identifiers are the usual way analytics leaks personal data; refusing them at the door is safer than scrubbing later. |
+| D-070 | Retention is measured from one `ActiveDay` row per member per India day, written at sign-in and session refresh | `lastActiveAt` only holds the latest value; a day row is tiny and needs no tracking script. |
+| D-071 | Decline patterns are offered back to the member as a suggestion and shown to staff; they never change preferences or matching automatically | Members decide what they want; staff stay in the loop. |
+| D-072 | A member-submitted success story is public only after staff confirm the partner's consent | Both people must agree; the member's word for their partner is not enough. |
+| D-073 | Experiment assignment is a pure hash of key and subject id | No per-person storage, stable across sessions and deploys, and independent between experiments. |
+| D-074 | Optional features sit behind feature flags and answer 404 when off | Lets each be launched, trialled and withdrawn without a deploy and without hints that it exists. |
+| D-075 | Voice calls are bridged by the provider, need mutual opt-in, and never expose or log numbers | The brief's masked-call requirement; numbers stay inside the telephony provider. |
+| D-076 | Astrology is cultural reference only and is never an input to matching, ranking or review | Keeps the human-reviewed, compatibility-in-words promise honest. |
+| D-077 | A real astrology provider is licensed, not built; the dev mock returns data labelled "sample" | Accurate charts need an ephemeris and tables that are better bought than half-written. |
+| D-078 | Guides are parsed from a small markdown subset to data and rendered as React elements | Raw HTML from a staff-edited field can never execute. |
+| D-079 | The service worker caches only an offline page | Introductions, messages and photos are private; keeping them out of a cache is simpler than protecting them in one. |
+| D-080 | An authenticator code can be used once (recent codes remembered for 3 minutes) | A code seen over a shoulder or in a log must not be replayable (ASVS 2.8.4). |
+| D-081 | Staff recovery codes: ten single-use codes, keyed hashes, regenerated only with a fresh authenticator code; a super admin can reset a lost sign-in | Gives a safe path when a phone is lost without making a password alone enough. |
+| D-082 | Shared rate limits use Redis and fall back to per-process counters if Redis fails | Protection degrades but never switches off; availability does not depend on Redis for sign-in. |
+| D-083 | Production start-up refuses anything that would silently do nothing or run on a development default | A mock mailer or SMS in production fails invisibly; failing loudly at boot is cheaper. |
+| D-084 | Accessibility is enforced by automated axe checks in CI plus a written manual pass before launch | Automation catches structural faults cheaply; screen-reader and keyboard flow need a person. |
+| D-085 | Browser end-to-end tests run against a throwaway API (in-memory database, mock providers) with test-only helpers that refuse to run in production | Real journeys across browser, API, database and background effects without touching real data. |
+| D-086 | Load, backup and restore scripts are provided but must be run and timed on staging before launch | They cannot be validated on a developer machine without Mongo tools, k6 and a staging stack; the checklist makes the gap explicit. |
