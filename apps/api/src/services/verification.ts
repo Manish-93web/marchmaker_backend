@@ -20,7 +20,7 @@ const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', '
 /** States from which a member may start or continue verification (see the journey state machine). */
 const READY: readonly string[] = ['profile_approved', 'verification_rejected', 'verification_pending'];
 
-export const evidenceKey = (userId: string, caseId: string, kind: EvidenceKind, ext: string) =>
+const evidenceKey = (userId: string, caseId: string, kind: EvidenceKind, ext: string) =>
   `identity/${userId}/${caseId}/${kind}-${randomUUID()}.${ext}`;
 
 type CaseDoc = NonNullable<Awaited<ReturnType<typeof Verification.findOne>>>;

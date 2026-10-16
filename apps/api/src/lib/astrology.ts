@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { BirthDetails } from '@marchmaker/shared';
 import type { Env } from '../config/env';
 
-export const chartSchema = z.object({
+const chartSchema = z.object({
   sunSign: z.string().max(40),
   moonSign: z.string().max(40),
   ascendant: z.string().max(40),
@@ -13,7 +13,7 @@ export const chartSchema = z.object({
 });
 export type Chart = z.infer<typeof chartSchema>;
 
-export const matchSchema = z.object({
+const matchSchema = z.object({
   points: z.number().min(0).max(36),
   maxPoints: z.literal(36),
   summary: z.string().max(600),
@@ -42,7 +42,7 @@ const NAKSHATRAS = [
   'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati',
 ];
 /** Both manglik, or neither, balance each other; a partial one is treated as balanced with anything but a full one. */
-export function manglikBalanced(a: 'yes' | 'partial' | 'no' | 'unknown', b: 'yes' | 'partial' | 'no' | 'unknown'): boolean | null {
+function manglikBalanced(a: 'yes' | 'partial' | 'no' | 'unknown', b: 'yes' | 'partial' | 'no' | 'unknown'): boolean | null {
   if (a === 'unknown' || b === 'unknown') return null;
   if (a === b) return true;
   return a !== 'yes' && b !== 'yes';

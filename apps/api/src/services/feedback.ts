@@ -173,7 +173,7 @@ export async function refreshLearnedWeights(now = new Date()) {
   return value;
 }
 
-export async function learnedWeights() {
+async function learnedWeights() {
   const row = await Setting.findOne({ key: 'matching_learned' }).lean();
   return (row?.value ?? null) as { at: string; samples: number; delta: Record<string, number>; correlation: Record<string, number> } | null;
 }

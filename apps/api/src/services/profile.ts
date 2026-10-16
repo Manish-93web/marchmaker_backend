@@ -88,7 +88,7 @@ export async function getProfile(ctx: AppContext, userId: string) {
 }
 
 /** Resume point: the first incomplete step, or the review step when everything is done. */
-export function firstIncomplete(steps: Record<ProfileStep, boolean>): ProfileStep | 'review' {
+function firstIncomplete(steps: Record<ProfileStep, boolean>): ProfileStep | 'review' {
   return PROFILE_STEPS.find((s) => !steps[s]) ?? 'review';
 }
 

@@ -15,7 +15,7 @@ const recoveryHash = (ctx: AppContext, code: string) => hmac(ctx.env.JWT_REFRESH
 const codeHash = (ctx: AppContext, userId: string, code: string) => hmac(ctx.env.JWT_REFRESH_SECRET, `totp:${userId}:${code}`);
 
 /** Ten one-time codes, 10 characters each (about 50 bits). Shown once; only keyed hashes are kept. */
-export function newRecoveryCodes(): string[] {
+function newRecoveryCodes(): string[] {
   return Array.from({ length: COUNT }, () => {
     const raw = Array.from({ length: 10 }, () => ALPHABET[randomInt(ALPHABET.length)]).join('');
     return `${raw.slice(0, 5)}-${raw.slice(5)}`;

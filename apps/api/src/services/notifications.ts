@@ -30,7 +30,7 @@ export function unsubscribeToken(ctx: AppContext, userId: string, category: stri
   return `${data}.${sign(ctx, data)}`;
 }
 
-export function parseUnsubscribeToken(ctx: AppContext, token: string): { userId: string; category: string } | null {
+function parseUnsubscribeToken(ctx: AppContext, token: string): { userId: string; category: string } | null {
   const [data, sig] = token.split('.');
   if (!data || !sig) return null;
   const expected = sign(ctx, data);

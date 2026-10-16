@@ -6,7 +6,7 @@ import { User } from '../models/core';
 import { WhatsAppOptIn, WhatsAppTemplate } from '../models/messaging';
 import { Delivery } from '../models/notifications';
 
-export const OPT_OUT_WORDS = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'OPT OUT', 'OPTOUT']);
+const OPT_OUT_WORDS = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'OPT OUT', 'OPTOUT']);
 
 export function verifyMetaSignature(appSecret: string, raw: Buffer, header: string | undefined): boolean {
   if (!header?.startsWith('sha256=')) return false;
@@ -35,7 +35,7 @@ interface MetaPayload {
 }
 
 /** Records the member's opt-out everywhere it matters: the consent log, the opt-in history and the channel itself. */
-export async function optOut(ctx: AppContext, e164: string, source: 'keyword' | 'settings' | 'staff') {
+async function optOut(ctx: AppContext, e164: string, source: 'keyword' | 'settings' | 'staff') {
   const phoneHash = ctx.crypto.blindIndex(e164);
   const users = await User.find({ phoneHash }).select('_id').lean();
   for (const u of users) {
@@ -43,10 +43,6 @@ export async function optOut(ctx: AppContext, e164: string, source: 'keyword' | 
     await WhatsAppOptIn.create({ userId: u._id, phoneHash, status: 'opted_out', source });
   }
   return users.length;
-}
-
-export async function recordOptIn(ctx: AppContext, userId: string, e164: string, source: 'settings' | 'staff' = 'settings') {
-  await WhatsAppOptIn.create({ userId, phoneHash: ctx.crypto.blindIndex(e164), status: 'opted_in', source });
 }
 
 /** Applies delivery receipts and handles STOP replies. Safe to receive twice. */
@@ -78,7 +74,7 @@ export async function handleWebhook(ctx: AppContext, payload: MetaPayload) {
 // ---------------------------------------------------------------- template registry
 
 /** Seed templates every deployment needs. Names must match what is approved in the Meta dashboard. */
-export const DEFAULT_TEMPLATES = [
+const DEFAULT_TEMPLATES = [
   { name: 'mm_notification', language: 'en', category: 'utility' as const, variables: 2, body: '{{1}}. {{2}}', purpose: 'Introduction, payment and verification updates' },
   { name: 'mm_oncall_alert', language: 'en', category: 'utility' as const, variables: 2, body: 'Marchmaker on-call: {{1}} (ref {{2}}). Open the admin console.', purpose: 'Pages on-call for critical or overdue safety reports' },
   { name: 'mm_otp', language: 'en', category: 'authentication' as const, variables: 1, body: '{{1}} is your Marchmaker code. It expires in 5 minutes. Do not share it.', purpose: 'One-time sign-in codes' },

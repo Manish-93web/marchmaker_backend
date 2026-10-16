@@ -3,7 +3,7 @@ import type { FeatureFlagKey } from '@marchmaker/shared';
 import { AppError } from './errors';
 import { FeatureFlag } from '../models/core';
 
-export async function flagEnabled(key: FeatureFlagKey): Promise<boolean> {
+async function flagEnabled(key: FeatureFlagKey): Promise<boolean> {
   return (await FeatureFlag.findOne({ key }).lean())?.enabled === true;
 }
 

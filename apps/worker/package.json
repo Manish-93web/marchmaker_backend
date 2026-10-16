@@ -12,16 +12,12 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1152.0",
     "@marchmaker/api": "workspace:^",
     "@marchmaker/shared": "workspace:^",
-    "@sentry/node": "^11.8.0",
     "bullmq": "^6.3.15",
     "dotenv": "^18.0.8",
     "ioredis": "^6.0.0",
-    "pdfkit": "^0.20.2",
-    "pino": "^10.4.0",
-    "sharp": "^0.35.5"
+    "pino": "^10.4.0"
   },
   "devDependencies": {
     "@marchmaker/config": "workspace:^",

@@ -28,7 +28,7 @@ export interface Reviewer {
 const PLAN_RANK: Record<string, number> = { concierge: 3, premium: 2, essential: 1, free: 0 };
 const MIN = 60_000;
 
-export const REJECTION_CODES = [
+const REJECTION_CODES = [
   'not_a_fit',
   'safety_concern',
   'profile_quality',

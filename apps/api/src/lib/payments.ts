@@ -60,10 +60,6 @@ const safe = (a: string, b: string) => {
   return x.length === y.length && timingSafeEqual(x, y);
 };
 
-export function signWebhookBody(secret: string, body: string): string {
-  return hmac(secret, body);
-}
-
 function parseWebhook(raw: Buffer, headers: Record<string, string | undefined>, secret: string): WebhookEvent | null {
   const sig = headers['x-razorpay-signature'];
   if (!sig || !safe(hmac(secret, raw), sig.trim())) return null;

@@ -263,7 +263,7 @@ async function relay(session: ClientSession, eventType: string, payload: Record<
 }
 
 /** Marks an order paid exactly once and grants its credits, whichever of webhook/confirm/reconcile gets here first. */
-export async function fulfilPackOrder(ctx: AppContext, p: NormalPayment): Promise<'paid' | 'duplicate' | 'unknown' | 'mismatch'> {
+async function fulfilPackOrder(ctx: AppContext, p: NormalPayment): Promise<'paid' | 'duplicate' | 'unknown' | 'mismatch'> {
   if (!p.orderId) return 'unknown';
   const order = await Order.findOne({ razorpayOrderId: p.orderId });
   if (!order) return 'unknown';
@@ -449,7 +449,7 @@ export async function handleSubscriptionCharge(ctx: AppContext, se: SubEntity, p
 }
 
 /** Applies a provider status to our row. Terminal states are sticky; unknown states are ignored. */
-export async function applySubscriptionState(se: SubEntity): Promise<void> {
+async function applySubscriptionState(se: SubEntity): Promise<void> {
   const sub = await findOrCreateSub(se);
   if (!sub) return;
   const next = se.status as SubscriptionState | undefined;
@@ -574,7 +574,7 @@ const asRecord = (v: unknown) => (v && typeof v === 'object' ? (v as Record<stri
 const entityOf = <T>(payload: Record<string, unknown>, key: string): T | undefined =>
   asRecord(asRecord(payload[key])?.entity) as T | undefined;
 
-export async function processEvent(ctx: AppContext, ev: Pick<ProviderEvent, 'event' | 'payload'>): Promise<void> {
+async function processEvent(ctx: AppContext, ev: Pick<ProviderEvent, 'event' | 'payload'>): Promise<void> {
   const pay = entityOf<PayEntity>(ev.payload, 'payment');
   const sub = entityOf<SubEntity>(ev.payload, 'subscription');
   switch (ev.event) {
@@ -665,7 +665,7 @@ export async function reconcileOrder(ctx: AppContext, orderId: string): Promise<
   return 'paid';
 }
 
-export async function syncSubscription(ctx: AppContext, razorpaySubscriptionId: string) {
+async function syncSubscription(ctx: AppContext, razorpaySubscriptionId: string) {
   const s = await needProvider(ctx).getSubscription(razorpaySubscriptionId);
   await applySubscriptionState({
     id: s.id,

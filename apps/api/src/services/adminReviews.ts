@@ -120,7 +120,7 @@ export async function decideProfile(req: Request, userId: string, actor: Actor, 
 
 // ------------------------------------------------------------ photo review
 
-export const PHOTO_REJECTION_REASONS = [
+const PHOTO_REJECTION_REASONS = [
   'not_you',
   'group_photo',
   'inappropriate',

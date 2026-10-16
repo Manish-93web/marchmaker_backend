@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { DEFAULTS, DEFAULT_MATCHING_CONFIG, type MatchingConfig } from '@marchmaker/shared';
 import { Setting } from '../models/core';
 
-export const matchingSettingsSchema = z
+const matchingSettingsSchema = z
   .object({
     weights: z.object({
       preferences: z.number().min(0).max(1),
@@ -24,7 +24,7 @@ export const matchingSettingsSchema = z
     message: 'At least one weight must be above zero',
   });
 
-export const reviewSettingsSchema = z.object({
+const reviewSettingsSchema = z.object({
   cooloffMinutes: z.number().int().min(0).max(240),
   introExpiryDays: z.number().int().min(1).max(30),
   matchmakerDailyCapacity: z.number().int().min(1).max(500),
@@ -32,7 +32,7 @@ export const reviewSettingsSchema = z.object({
 });
 export type ReviewSettings = z.infer<typeof reviewSettingsSchema>;
 
-export const DEFAULT_REVIEW_SETTINGS: ReviewSettings = {
+const DEFAULT_REVIEW_SETTINGS: ReviewSettings = {
   cooloffMinutes: DEFAULTS.releaseCooloffMinutes,
   introExpiryDays: DEFAULTS.introExpiryDays,
   matchmakerDailyCapacity: 25,
@@ -59,7 +59,7 @@ export async function getReviewSettings(): Promise<ReviewSettings> {
   return { ...DEFAULT_REVIEW_SETTINGS, ...(await read<ReviewSettings>('review')) };
 }
 
-export const retentionSettingsSchema = z.object({
+const retentionSettingsSchema = z.object({
   /** Days after a decision before identity images are deleted. */
   evidenceDays: z.number().int().min(1).max(365),
   /** Days a member can change their mind after asking to delete their account. */
@@ -67,7 +67,7 @@ export const retentionSettingsSchema = z.object({
 });
 export type RetentionSettings = z.infer<typeof retentionSettingsSchema>;
 
-export const dataRequestSettingsSchema = z.object({
+const dataRequestSettingsSchema = z.object({
   /** When on, a super admin approves every export and deletion before it runs. */
   requireApproval: z.boolean(),
 });

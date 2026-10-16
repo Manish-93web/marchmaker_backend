@@ -30,7 +30,7 @@ interface ClientInfo {
 
 const ENDED = 'Your session has ended. Please sign in again.';
 
-export function signAccess(ctx: AppContext, claims: AccessClaims): string {
+function signAccess(ctx: AppContext, claims: AccessClaims): string {
   return jwt.sign(claims, ctx.env.JWT_ACCESS_SECRET, {
     algorithm: 'HS256',
     expiresIn: DEFAULTS.accessTokenTtlSec,

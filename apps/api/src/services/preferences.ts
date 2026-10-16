@@ -34,7 +34,7 @@ export async function putPreferences(userId: string, input: PreferencesInput, ex
 }
 
 /** Where each preference dimension lives on a profile document. Reused by matching in Phase 8. */
-export const FIELD_PATHS: Partial<Record<PreferenceDimension, string>> = {
+const FIELD_PATHS: Partial<Record<PreferenceDimension, string>> = {
   height: 'data.basics.heightCm',
   religion: 'data.background.religion',
   community: 'data.background.community',
@@ -51,7 +51,7 @@ export const FIELD_PATHS: Partial<Record<PreferenceDimension, string>> = {
 };
 
 /** Builds a Mongo filter from must-have dimensions. Income is encrypted and cannot be queried. */
-export function mustHaveFilter(dims: readonly Dim[], now = new Date()): Record<string, unknown> {
+function mustHaveFilter(dims: readonly Dim[], now = new Date()): Record<string, unknown> {
   const filter: Record<string, unknown> = {};
   for (const d of dims) {
     if (d.type !== 'must') continue;
@@ -78,7 +78,7 @@ export function mustHaveFilter(dims: readonly Dim[], now = new Date()): Record<s
 export type PoolBucket = 'very_few' | 'few' | 'some' | 'many';
 
 /** Deliberately coarse: exact counts could reveal who is on the platform. */
-export function bucketFor(count: number): PoolBucket {
+function bucketFor(count: number): PoolBucket {
   if (count < 10) return 'very_few';
   if (count < 50) return 'few';
   if (count < 200) return 'some';
