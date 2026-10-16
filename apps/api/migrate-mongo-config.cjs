@@ -1,6 +1,7 @@
 // Schema migrations (migrate-mongo). The connection string comes from MONGODB_URI; nothing is hard-coded.
 // Usage: pnpm --filter @marchmaker/api migrate:up | migrate:down | migrate:status
 require('dotenv').config();
+if (process.env.DNS_SERVERS) require('node:dns').setServers(process.env.DNS_SERVERS.split(',').map((s) => s.trim()));
 
 module.exports = {
   mongodb: {
