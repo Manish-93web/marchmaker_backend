@@ -104,7 +104,22 @@ Status: **Met** (implemented and tested), **Partly** (implemented, with a stated
 ## Open items before launch
 
 - Independent penetration test, including the identity-evidence and payment flows.
-- KMS-managed field-encryption key with a rotation procedure (the code already supports a single key; add key versioning before the first rotation).
-- Database user without update/delete on `auditlogs`.
+- Run the first real key rotation on staging (`rotate-field-key --dry-run`, then for real) and confirm sign-in by phone still works afterwards.
+- Create the MongoDB users in `scripts/mongo-users.js` (the API user has no update or delete on `auditlogs`) and point `MONGODB_URI` at them.
 - Real SMS (DLT template approval), KYC vendor and astrology provider contracts; their webhooks verified against vendor sandboxes.
 - WAF / DDoS protection at the edge and request-size limits at the proxy.
+
+## Additions in the gap-closure pass
+
+- **Key ring, KMS and blind index.** Ciphertext carries its key version; `FIELD_ENCRYPTION_KEYS_PREVIOUS` decrypts old data; `rotateFieldKey` re-encrypts; phone lookups use `FIELD_BLIND_INDEX_KEY`, which must never change. Production refuses to start with a key version but no previous keys, and without `SENTRY_DSN`.
+- **Least-privilege database users** (`scripts/mongo-users.js`): application, worker, append-only audit writer and a read-only analytics role.
+- **Webhooks.** Resend (Svix signature, de-duplicated by message id), WhatsApp (Meta HMAC over the raw body, verify token on GET) and the existing payment, KYC and call webhooks all store first and verify the signature before acting.
+- **Private attachments.** Keys embed the owner and scope; the server re-checks owner, size and existence when a ticket or report is sent; links are signed for five minutes; staff views of report screenshots are audited.
+- **Anti-abuse.** Same device, same payment instrument and sign-up velocity flag a referral for a person; a wallet cap limits the share of an order.
+- **Circuit breakers** on every provider so a failing vendor degrades one feature instead of the whole service.
+- **Error reporting** scrubs personal fields in the API, worker and both browsers; no session replay.
+- **Export and deletion approval** (optional) and a purge that now covers inbox, devices, feedback, reading progress, WhatsApp consent, tickets and their files.
+
+### Still needing outside verification
+
+KMS rotation on a real KMS, Resend and Meta webhooks against live accounts, real KYC vendors (presets are from documentation), TURN relay under real NATs, and an independent penetration test.

@@ -1,7 +1,7 @@
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import { NOTIFICATION_SPECS, type Role } from '@marchmaker/shared';
-import { renderNotice } from '@marchmaker/email';
+import { renderEventEmail } from '@marchmaker/email';
 import type { AppContext } from '../context';
 import { audit } from '../lib/audit';
 import { notFound } from '../lib/errors';
@@ -161,16 +161,15 @@ export function adminMessagingRouter(ctx: AppContext): Router {
     requirePermission('settings.manage'),
     validate({ body: z.object({ type: z.string().max(60) }) }),
     asyncHandler(async (req, res) => {
-      const s = NOTIFICATION_SPECS[req.body.type];
-      if (!s) throw notFound('That message type does not exist');
-      const copy = s.copy({ introductionId: 'abc123', hoursLeft: 12, threadId: 't1', credits: 2, graceDays: 3, number: 'T-000123', ticketId: 't1', amountLabel: '₹200' });
-      const mail = await renderNotice({
-        subject: copy.title,
-        preview: copy.body,
-        heading: copy.title,
-        paragraphs: [copy.body],
-        cta: { label: 'Open Marchmaker', url: `${ctx.env.APP_URL}${copy.url}` },
-        ...(s.critical ? {} : { unsubscribeUrl: `${ctx.env.APP_URL}/unsubscribe?t=preview` }),
+      const s_ = NOTIFICATION_SPECS[req.body.type];
+      if (!s_) throw notFound('That message type does not exist');
+      const copy = s_.copy({ introductionId: 'abc123', hoursLeft: 12, threadId: 't1', credits: 2, graceDays: 3, number: 'T-000123', ticketId: 't1', amountLabel: '₹200', count: 3 });
+      const mail = await renderEventEmail(req.body.type, {
+        title: copy.title,
+        body: copy.body,
+        url: `${ctx.env.APP_URL}${copy.url}`,
+        detail: req.body.type === 'message.digest' ? '3 unread' : undefined,
+        ...(s_.critical ? {} : { unsubscribeUrl: `${ctx.env.APP_URL}/unsubscribe?t=preview` }),
       });
       res.json({ subject: mail.subject, html: mail.html, text: mail.text });
     }),

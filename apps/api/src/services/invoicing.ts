@@ -15,7 +15,7 @@ async function nextNumber(kind: 'invoice' | 'credit_note', at: Date, session: Cl
   const c = await InvoiceCounter.findOneAndUpdate(
     { key: `${prefix}:${fy}` },
     { $inc: { seq: 1 } },
-    { upsert: true, new: true, session },
+    { upsert: true, returnDocument: 'after', session },
   );
   return { fy, number: `${prefix}/${fy}/${pad(c.seq)}` };
 }

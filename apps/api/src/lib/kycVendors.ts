@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { ID_DOC_TYPES, type KycResult } from '@marchmaker/shared';
+import type { ID_DOC_TYPES, KycResult } from '@marchmaker/shared';
 import type { Env } from '../config/env';
 import type { KycProvider, KycSession, KycWebhookEvent } from './kyc';
 
@@ -183,7 +183,7 @@ export function mapResult(spec: VendorSpec, raw: unknown): KycResult {
   const confidence = Number.isFinite(rawConf) ? Math.min(1, Math.max(0, rawConf / (g.confidenceScale ?? 1))) : 0;
   const doc = String(getPath(raw, g.docTypePath ?? '') ?? '').toLowerCase();
   const num = String(getPath(raw, g.docNumberPath ?? '') ?? '');
-  const docType = doc.includes('aadhaar') ? 'aadhaar_masked' : doc.includes('passport') ? 'passport' : doc.includes('driv') ? 'driving_licence' : doc.includes('voter') ? 'voter_id' : /pan/.test(doc) ? 'pan' : undefined;
+  const docType = doc.includes('aadhaar') ? 'aadhaar_masked' : doc.includes('passport') ? 'passport' : doc.includes('driv') ? 'driving_licence' : doc.includes('voter') ? 'voter_id' : /\bpan\b/.test(doc) ? 'pan' : undefined;
   return {
     status: state,
     confidence,

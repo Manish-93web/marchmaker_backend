@@ -143,7 +143,7 @@ export async function seedDemo(env: Env, log: Logger, opts: { reset?: boolean } 
       await Preference.create({
         userId: user._id,
         dimensions: [
-          { key: 'age', range: { min: year - 4, max: year + 4 }, values: [], type: 'must', importance: 3 },
+          { key: 'age', range: { min: 24, max: 42 }, values: [], type: 'must', importance: 3 },
           { key: 'religion', values: [religion], type: rnd() > 0.5 ? 'must' : 'flexible', importance: 2 },
           { key: 'diet', values: [data.lifestyle.diet as string], type: 'flexible', importance: 1 },
           { key: 'marriage_timeline', values: [data.values.marriageTimeline as string], type: 'flexible', importance: 2 },

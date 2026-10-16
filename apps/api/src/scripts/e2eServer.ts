@@ -20,6 +20,10 @@ import { LegalDocument } from '../models/auth';
 import { Plan } from '../models/content';
 import { Outbox, User } from '../models/core';
 import { dispatchEvent } from '../services/notifications';
+import { releaseDueMatches } from '../services/matchReview';
+import { MatchSuggestion } from '../models/matching';
+import { Photo, Preference, Profile } from '../models/profile';
+import { Verification } from '../models/verification';
 import { LEGAL_SEEDS } from './legalSeed';
 
 if (process.env.NODE_ENV === 'production') throw new Error('The e2e server must never run in production');
@@ -62,7 +66,7 @@ async function main() {
   const relay = setInterval(async () => {
     try {
       for (let i = 0; i < 20; i++) {
-        const ev = await Outbox.findOneAndUpdate({ status: 'pending' }, { $set: { status: 'dispatched' } }, { sort: { createdAt: 1 }, new: true });
+        const ev = await Outbox.findOneAndUpdate({ status: 'pending' }, { $set: { status: 'dispatched' } }, { sort: { createdAt: 1 }, returnDocument: 'after' });
         if (!ev) break;
         await dispatchEvent(ctx, ev.eventType, (ev.payload ?? {}) as Record<string, unknown>, String(ev._id)).catch(() => undefined);
       }
@@ -79,6 +83,87 @@ async function main() {
     const to = String(req.query.to ?? '');
     const m = [...mailer.sent].reverse().find((x) => x.to === to);
     res.json(m ? { subject: m.subject, html: m.html, text: m.text } : null);
+  });
+
+  /**
+   * Test-only: a member who has finished the profile and uploaded their documents, waiting for the team.
+   * The browser cannot upload to the in-memory storage, so this stands in for those two steps; everything
+   * after (reviews, matching, introductions, payment, messages) is driven through the real screens.
+   */
+  const seedMember = async (o: { email: string; firstName: string; gender: 'woman' | 'man'; dobYear: number; password: string }) => {
+    const user = await User.create({
+      email: o.email,
+      passwordHash: await hashPassword(o.password),
+      firstName: o.firstName,
+      gender: o.gender,
+      dobEnc: ctx.crypto.encrypt(`${o.dobYear}-04-10`),
+      dobYear: o.dobYear,
+      roles: ['member'],
+      emailVerifiedAt: new Date(),
+      lastActiveAt: new Date(),
+      journeyState: 'profile_submitted',
+    });
+    const data = {
+      basics: { firstName: o.firstName, heightCm: o.gender === 'woman' ? 163 : 176, maritalStatus: 'never_married', hasChildren: false },
+      background: { religion: 'Hindu', motherTongue: 'Hindi', city: 'Pune', state: 'Maharashtra', country: 'India', coordinates: [73.86, 18.52] },
+      education_career: { highestEducation: 'Masters', profession: 'Product manager' },
+      family: { familyType: 'nuclear', familyValues: 'moderate' },
+      lifestyle: { diet: 'vegetarian', smoking: 'never', drinking: 'never', fitness: 'sometimes' },
+      values: { marriageTimeline: 'within_1_year', wantsKids: 'yes', livingWithFamily: 'open', settleCity: 'Pune' },
+      about: { bio: 'I like quiet weekends, long walks and cooking with my family. I am looking for someone kind and honest.', prompts: [] },
+      photos: {},
+    };
+    await Profile.create({
+      userId: user._id,
+      data,
+      completedSteps: ['basics', 'background', 'education_career', 'family', 'lifestyle', 'values', 'about', 'photos'],
+      currentStep: 'photos',
+      status: 'submitted',
+      birthYear: o.dobYear,
+      gender: o.gender,
+      geo: { type: 'Point', coordinates: [73.86, 18.52] },
+      submittedAt: new Date(),
+    });
+    await Preference.create({
+      userId: user._id,
+      dimensions: [
+        { key: 'age', range: { min: 24, max: 42 }, values: [], type: 'must', importance: 3 },
+        { key: 'religion', values: ['Hindu'], type: 'flexible', importance: 2 },
+        { key: 'marriage_timeline', values: ['within_1_year'], type: 'flexible', importance: 2 },
+      ],
+    });
+    const key = `e2e/${String(user._id)}/lg.webp`;
+    await ctx.storage.put('photos', key, Buffer.from('e2e-photo'), 'image/webp');
+    await Photo.create({ userId: user._id, key: `${key}.raw`, variants: { sm: key, md: key, lg: key, blur: key }, contentType: 'image/webp', width: 1080, height: 1350, isPrimary: true, order: 0, status: 'pending', hash: `e2e-${String(user._id)}` });
+    const ev = async (kind: string) => {
+      const k = `e2e/${String(user._id)}/${kind}.jpg`;
+      await ctx.storage.put('identity', k, Buffer.from('e2e-id'), 'image/jpeg');
+      return { key: k, contentType: 'image/jpeg', sizeBytes: 6, uploadedAt: new Date() };
+    };
+    await Verification.create({
+      userId: user._id,
+      method: 'manual',
+      status: 'pending',
+      docType: 'pan',
+      docLast4: '1234',
+      evidence: { id_front: await ev('id_front'), id_back: await ev('id_back'), selfie: await ev('selfie') },
+      submittedAt: new Date(),
+    });
+    return String(user._id);
+  };
+  outer.use(express.json());
+  outer.post('/__e2e/member', async (req, res) => {
+    try {
+      res.json({ id: await seedMember(req.body) });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+  /** Skips the ten-minute cool-off after a match is approved, then releases what is due. */
+  outer.post('/__e2e/release', async (_req, res) => {
+    await MatchSuggestion.updateMany({ status: 'approved', releasedAt: { $exists: false } }, { $set: { releaseAt: new Date(Date.now() - 1000) } });
+    const n = await releaseDueMatches(ctx);
+    res.json({ released: n });
   });
   outer.use(api);
 

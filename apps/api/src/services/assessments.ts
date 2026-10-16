@@ -198,7 +198,7 @@ export async function completeAssessment(ctx: AppContext, userId: string, rawKey
         retakeAvailableAt: new Date(now.getTime() + DEFAULTS.assessmentRetakeDays * DAY),
       },
     },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!claimed) return resultFor(userId, key); // a concurrent request finished it
   await emit('assessment.completed', { userId, key, version: attempt.version });

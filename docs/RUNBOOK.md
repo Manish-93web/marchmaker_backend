@@ -80,3 +80,32 @@ Rare and sensitive. Restore into a scratch database, copy the specific documents
 | Monthly | review feature flags and experiments; rotate nothing unless due; check dependency audit |
 | Quarterly | restore drill; access review (who has which role); review this runbook |
 | Annually | penetration test; review retention periods; review the ASVS table |
+
+## Releases: migrations and indexes
+
+The deploy workflow runs `migrate:up` and then `sync-indexes` against the target database before it tells the host to roll out the new images. Run them by hand with `pnpm --filter @marchmaker/api migrate:up` and `sync-indexes`. Migrations are `.cjs` files in `apps/api/migrations`; each has an `up` and a `down`. `sync-indexes` only creates indexes; dropping one is always a migration.
+
+## Rotating the field-encryption key
+
+1. Generate a new 32-byte key. Set `FIELD_ENCRYPTION_KEY` to it and `FIELD_ENCRYPTION_KEY_VERSION` to the next number. Move the old key into `FIELD_ENCRYPTION_KEYS_PREVIOUS` (`version:key`, comma separated). Never change `FIELD_BLIND_INDEX_KEY`.
+2. Deploy. Everything still decrypts; new writes use the new key.
+3. `pnpm --filter @marchmaker/api rotate-field-key --dry-run` shows how many records would change; run it without the flag to re-encrypt in batches. It is safe to stop and re-run.
+4. When the dry run reports zero, remove the old key from `FIELD_ENCRYPTION_KEYS_PREVIOUS` and deploy again.
+
+With KMS, set `FIELD_ENCRYPTION_KEY_KMS_WRAPPED` instead of the plain key; the process unwraps it at start-up and holds it only in memory.
+
+## Jobs and providers
+
+Admin > Jobs and providers shows each provider's circuit. "Paused after failures" means calls are being skipped for about 30 seconds after repeated errors; check the vendor's status page. Failed jobs can be retried or discarded there; the dead-letter queue holds jobs that failed six times. Stuck outbox events can be sent again.
+
+## Overdue safety reports
+
+The worker emails `ONCALL_EMAIL` once for each high or critical report past its deadline and sends a review-backlog digest at most every six hours. Set `ONCALL_WHATSAPP` (comma-separated E.164 numbers) and get the `mm_oncall_alert` template approved to add WhatsApp paging.
+
+## Data requests
+
+With "A super admin must approve every export and deletion" on (Admin > Operations settings), requests wait in Admin > Data requests. A deletion that is waiting is never purged, however old.
+
+## Demo data
+
+`pnpm --filter @marchmaker/api seed:demo` (never in production) creates 40 demo members, suggestions in every state and introductions in every state. `-- --reset` removes them first. Password: see the script header.

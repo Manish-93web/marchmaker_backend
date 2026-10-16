@@ -28,7 +28,7 @@ async function apply(e: Entry, session: ClientSession): Promise<{ balance: numbe
   }
   const filter: Record<string, unknown> = { _id: e.userId };
   if (e.delta < 0) filter.walletBalancePaise = { $gte: -e.delta };
-  const user = await User.findOneAndUpdate(filter, { $inc: { walletBalancePaise: e.delta } }, { new: true, session });
+  const user = await User.findOneAndUpdate(filter, { $inc: { walletBalancePaise: e.delta } }, { returnDocument: 'after', session });
   if (!user) throw new AppError(402, 'WALLET_INSUFFICIENT', 'Your wallet does not have enough for that');
   await WalletLedger.create(
     [

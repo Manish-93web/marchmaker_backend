@@ -97,7 +97,7 @@ export async function onPayment(userId: Types.ObjectId | string, razorpayPayment
         refereeRewardPaise: settings.refereeRewardPaise,
       },
     },
-    { new: true },
+    { returnDocument: 'after' },
   );
   return Boolean(r);
 }
@@ -109,7 +109,7 @@ async function payout(referralId: Types.ObjectId | string, from: ('qualified' | 
     const r = await Referral.findOneAndUpdate(
       { _id: referralId, status: { $in: from } },
       { $set: { status: 'rewarded', rewardedAt: new Date() } },
-      { new: true, session },
+      { returnDocument: 'after', session },
     );
     if (!r) return false;
     const pairs: [Types.ObjectId, number, string][] = [

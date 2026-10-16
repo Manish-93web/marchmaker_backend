@@ -44,3 +44,11 @@ The member always sees an honest "pending" or "a person is reviewing" state, and
 | Full document number | Never collected | n/a |
 
 Aadhaar must be uploaded masked; the unmasked type is not accepted.
+
+## Hosted vendor presets (HyperVerge, IDfy, Digio)
+
+Set `KYC_PROVIDER` to `hyperverge`, `idfy` or `digio`, plus `KYC_BASE_URL`, `KYC_API_KEY`, `KYC_API_SECRET` (the second credential) and `KYC_WEBHOOK_SECRET`. A preset says how to authenticate, open a hosted session, read the result and verify the webhook; `lib/kycVendors.ts` holds them.
+
+**These presets were written from the vendors' public documentation and have not been run against a live account.** Before launch, with sandbox credentials, confirm for each vendor: the session path and body, where the redirect URL and session id are in the response, the result path and its status words, how name, date of birth, face and liveness are reported (and whether confidence is 0-1 or 0-100), and the webhook header name and encoding. If anything differs, put the correction in `KYC_MAPPING_JSON` (it is merged over the preset section by section) rather than changing code. The contract tests in `test/kycVendors.test.ts` show what each mapping table is expected to do.
+
+Whatever the vendor says, automation can only approve a high-confidence, fully matching result. Everything else goes to a person.

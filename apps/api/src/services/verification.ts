@@ -162,7 +162,7 @@ export async function submitManual(
         method: 'manual',
       },
     },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!claimed) throw conflict('Your verification was already submitted');
   await transitionJourney(userId, 'verification_pending', userId);

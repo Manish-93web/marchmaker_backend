@@ -33,7 +33,7 @@ export async function reserve(couponId: Types.ObjectId | string, userId: string,
   const c = await Coupon.findOneAndUpdate(
     { _id: couponId, $or: [{ maxUses: { $exists: false } }, { maxUses: null }, { $expr: { $lt: ['$usedCount', '$maxUses'] } }] },
     { $inc: { usedCount: 1 } },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!c) throw bad('That code has been fully used');
   await CouponRedemption.create({ couponId, userId, orderId, discountPaise, status: 'reserved' });

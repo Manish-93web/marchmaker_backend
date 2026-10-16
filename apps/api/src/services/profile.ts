@@ -159,7 +159,7 @@ export async function saveStep(
       $set: { [`data.${step}`]: merged, completedSteps: completed, currentStep: step, ...set },
       $inc: { version: 1 },
     },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!updated) {
     const latest = await Profile.findById(profile._id);

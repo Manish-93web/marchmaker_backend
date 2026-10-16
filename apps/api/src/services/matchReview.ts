@@ -119,7 +119,7 @@ export async function detail(ctx: AppContext, req: Request, id: string, me: Revi
         $set: { status: 'in_review', reviewerId: me.userId, claimedAt: now },
         $push: { reviewHistory: entry(me.userId, 'claim') },
       },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (claimed) Object.assign(s, claimed.toObject());
   }
@@ -210,7 +210,7 @@ export async function decide(ctx: AppContext, req: Request, id: string, me: Revi
         $set: { ...set, reviewerId: s.reviewerId ?? me.userId, claimedAt: s.claimedAt ?? now },
         $push: { reviewHistory: entry(me.userId, needsSecond ? 'approve_first' : 'approve', undefined, { whyText: d.whyText.trim() }) },
       },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!claimed) throw conflict('This suggestion changed while you were reviewing it');
     await audit(req, {

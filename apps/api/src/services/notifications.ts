@@ -228,7 +228,7 @@ export async function sendDueDeliveries(ctx: AppContext, now = new Date(), onlyN
     const d = await Delivery.findOneAndUpdate(
       { status: 'queued', sendAfter: { $lte: now }, ...(onlyNotificationId && { notificationId: onlyNotificationId }) },
       { $inc: { attempts: 1 }, $set: { sendAfter: new Date(now.getTime() + 2 * 60_000) } },
-      { new: true, sort: { sendAfter: 1 } },
+      { returnDocument: 'after', sort: { sendAfter: 1 } },
     );
     if (!d) break;
     try {

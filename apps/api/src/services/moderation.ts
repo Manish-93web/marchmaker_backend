@@ -125,7 +125,7 @@ export async function claim(req: Request, id: string, actor: Actor) {
   const r = await Report.findOneAndUpdate(
     { _id: id, status: { $in: ['open', 'investigating'] }, $or: [{ assigneeId: { $exists: false } }, { assigneeId: null }, { assigneeId: actor.userId }] },
     { $set: { assigneeId: actor.userId, claimedAt: new Date(), status: 'investigating' } },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!r) {
     const exists = await Report.exists({ _id: id });

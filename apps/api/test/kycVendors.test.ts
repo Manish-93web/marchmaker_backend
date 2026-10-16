@@ -25,6 +25,15 @@ describe('result mapping', () => {
     expect(evaluateKycResult(r)).toEqual({ action: 'approve' });
   });
 
+  it('recognises each document type by its name', () => {
+    const doc = (name: string) => mapResult(VENDOR_PRESETS.hyperverge, { result: { status: 'approved', results: { idCard: { documentType: name, idNumber: 'ABCDE1234F' } } } }).docType;
+    expect(doc('PAN Card')).toBe('pan');
+    expect(doc('Indian Passport')).toBe('passport');
+    expect(doc('Driving Licence')).toBe('driving_licence');
+    expect(doc('Voter ID')).toBe('voter_id');
+    expect(doc('Company pantry pass')).toBeUndefined(); // "pan" inside another word is not a PAN card
+  });
+
   it('never approves on a mismatch, failed liveness, unknown status or an empty body', () => {
     const base = { result: { status: 'approved', results: { faceMatch: { match: 'yes', confidence: 99 }, nameMatch: { match: 'no' }, dobMatch: { match: 'yes' }, liveness: { liveFace: 'yes' } } } };
     expect(evaluateKycResult(mapResult(VENDOR_PRESETS.hyperverge, base))).toMatchObject({ action: 'manual_review', reason: 'mismatch' });

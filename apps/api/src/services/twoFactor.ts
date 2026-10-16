@@ -39,7 +39,7 @@ export async function consumeRecoveryCode(ctx: AppContext, userId: string, code:
   const u = await User.findOneAndUpdate(
     { _id: userId, 'twoFactor.recoveryHashes': h },
     { $pull: { 'twoFactor.recoveryHashes': h } },
-    { new: true },
+    { returnDocument: 'after' },
   ).select('+twoFactor.recoveryHashes');
   return u ? (u.twoFactor?.recoveryHashes?.length ?? 0) : null;
 }

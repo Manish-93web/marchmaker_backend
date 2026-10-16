@@ -28,7 +28,7 @@ interface Actor {
 const sid = (v: unknown) => String(v);
 
 async function nextNumber() {
-  const c = await InvoiceCounter.findOneAndUpdate({ key: 'TICKET' }, { $inc: { seq: 1 } }, { upsert: true, new: true });
+  const c = await InvoiceCounter.findOneAndUpdate({ key: 'TICKET' }, { $inc: { seq: 1 } }, { upsert: true, returnDocument: 'after' });
   return `T-${String(c.seq).padStart(6, '0')}`;
 }
 

@@ -29,5 +29,5 @@ USER app
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:4000/healthz || exit 1
 # Release step (before rolling out new containers):
-#   node node_modules/migrate-mongo/bin/migrate-mongo.js up -f migrate-mongo-config.cjs && node dist/syncIndexes.js
+#   node node_modules/migrate-mongo/bin/migrate-mongo.js up -f migrate-mongo-config.cjs && node dist/scripts/syncIndexes.js
 CMD ["node", "dist/server.js"]

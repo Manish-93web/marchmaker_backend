@@ -51,7 +51,7 @@ export async function confirmUpload(ctx: AppContext, userId: string, id: string)
   const claimed = await Photo.findOneAndUpdate(
     { _id: id, status: 'awaiting_upload' },
     { $set: { status: 'processing' } },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (claimed) await emit('photo.uploaded', { photoId: id, userId });
   return { id, status: 'processing' as const };

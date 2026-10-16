@@ -638,7 +638,7 @@ export async function processStored(ctx: AppContext, eventId: string): Promise<b
   const row = await WebhookEvent.findOneAndUpdate(
     { provider: 'razorpay', eventId, processedAt: { $exists: false } },
     { $inc: { attempts: 1 } },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!row) return true;
   try {

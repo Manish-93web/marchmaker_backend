@@ -99,7 +99,7 @@ export async function adminFaqs() {
   return { items: (await Faq.find().sort({ sortOrder: 1, createdAt: 1 }).limit(300).lean()).map(presentFaq) };
 }
 export async function saveFaq(req: Request, id: string | null, input: z.infer<typeof faqSchema>, actor: Actor) {
-  const f = id ? await Faq.findByIdAndUpdate(id, { $set: { ...input, updatedBy: actor.userId } }, { new: true }) : await Faq.create({ ...input, updatedBy: actor.userId });
+  const f = id ? await Faq.findByIdAndUpdate(id, { $set: { ...input, updatedBy: actor.userId } }, { returnDocument: 'after' }) : await Faq.create({ ...input, updatedBy: actor.userId });
   if (!f) throw notFound();
   await audit(req, { action: id ? 'faq.updated' : 'faq.created', actorId: actor.userId, actorRoles: actor.roles, subjectType: 'faq', subjectId: sid(f._id) });
   return presentFaq(f);

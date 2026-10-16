@@ -41,7 +41,7 @@ export async function upsert(req: Request, input: ExperimentInput, actor: Actor)
   const e = await Experiment.findOneAndUpdate(
     { key: input.key },
     { $set: { description: input.description, enabled: input.enabled, variants: input.variants, updatedBy: actor.userId } },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: 'after' },
   );
   await audit(req, {
     action: before ? 'experiment.updated' : 'experiment.created',

@@ -35,7 +35,7 @@ async function apply(e: Entry, session: ClientSession): Promise<{ balance: numbe
   const user = await User.findOneAndUpdate(
     filter,
     { $inc: { creditBalance: e.delta, creditsReserved: e.heldDelta } },
-    { new: true, session },
+    { returnDocument: 'after', session },
   );
   if (!user) throw new AppError(402, 'NO_CREDITS', 'You need an introduction credit for this');
 

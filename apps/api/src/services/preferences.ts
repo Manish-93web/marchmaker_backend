@@ -28,7 +28,7 @@ export async function putPreferences(userId: string, input: PreferencesInput, ex
   const updated = await Preference.findOneAndUpdate(
     { userId },
     { $set: { dimensions: input.dimensions }, $inc: { version: 1 } },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: 'after' },
   );
   return { version: updated.version, dimensions: updated.dimensions };
 }
