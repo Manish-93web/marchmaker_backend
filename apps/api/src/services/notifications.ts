@@ -14,6 +14,7 @@ import { User } from '../models/core';
 import { Introduction } from '../models/matching';
 import { Delivery, Notification, PushSubscription } from '../models/notifications';
 import { currentConsents } from './legal';
+import { templateReady } from './whatsapp';
 
 const MAX_ATTEMPTS = 4;
 const isDup = (e: unknown) => (e as { code?: number }).code === 11000;
@@ -176,19 +177,21 @@ async function deliverOne(ctx: AppContext, d: InstanceType<typeof Delivery>) {
       cta: { label: 'Open Marchmaker', url },
       ...(critical ? {} : { unsubscribeUrl: unsub }),
     });
-    await ctx.mailer.send({
+    const sent = await ctx.mailer.send({
       to: user.email,
       ...mail,
       ...(critical ? {} : { headers: { 'List-Unsubscribe': `<${unsub}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } }),
     });
-    return { ok: true as const };
+    if (sent?.suppressed) return { ok: false as const, error: 'suppressed', final: true };
+    return { ok: true as const, providerId: sent?.id };
   }
 
   if (channel === 'whatsapp') {
     if (!ctx.whatsapp) return { ok: false as const, error: 'not_configured', final: true };
     if (!user.phoneEnc) return { ok: false as const, error: 'no_phone', final: true };
-    await ctx.whatsapp.sendTemplate(ctx.crypto.decrypt(user.phoneEnc), 'mm_notification', [n.title, n.body]);
-    return { ok: true as const };
+    if (!(await templateReady(ctx, 'mm_notification'))) return { ok: false as const, error: 'template_not_approved', final: true };
+    const wa = await ctx.whatsapp.sendTemplate(ctx.crypto.decrypt(user.phoneEnc), 'mm_notification', [n.title, n.body]);
+    return { ok: true as const, providerId: wa.id };
   }
 
   if (channel === 'push') {
@@ -227,7 +230,10 @@ export async function sendDueDeliveries(ctx: AppContext, now = new Date(), onlyN
     try {
       const r = await deliverOne(ctx, d);
       if (r.ok) {
-        await Delivery.updateOne({ _id: d._id }, { $set: { status: 'sent', sentAt: new Date() }, $unset: { error: 1 } });
+        await Delivery.updateOne(
+          { _id: d._id },
+          { $set: { status: 'sent', sentAt: new Date(), ...('providerId' in r && r.providerId ? { providerId: r.providerId } : {}) }, $unset: { error: 1 } },
+        );
         sent++;
       } else {
         await Delivery.updateOne({ _id: d._id }, { $set: { status: r.final ? 'skipped' : 'failed', reason: r.error } });

@@ -27,7 +27,9 @@ const envSchema = z.object({
   ADMIN_URL: z.string().url().default('http://localhost:5174'),
 
   REFRESH_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
-  EMAIL_PROVIDER: z.enum(['mock', 'smtp']).default('mock'),
+  EMAIL_PROVIDER: z.enum(['mock', 'smtp', 'resend']).default('mock'),
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_WEBHOOK_SECRET: z.string().optional(),
   SUPPORT_EMAIL: z.string().email().default('support@marchmaker.local'),
   EMAIL_FROM: z.string().default('Marchmaker <hello@marchmaker.local>'),
   SMTP_HOST: z.string().default('127.0.0.1'),
@@ -59,6 +61,12 @@ const envSchema = z.object({
   WHATSAPP_PROVIDER: z.enum(['none', 'mock', 'meta']).default('mock'),
   WHATSAPP_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_ID: z.string().optional(),
+  /** Echoed back to Meta when it verifies the webhook URL. */
+  WHATSAPP_VERIFY_TOKEN: z.string().optional(),
+  /** Meta app secret: signs every webhook call (X-Hub-Signature-256). */
+  WHATSAPP_APP_SECRET: z.string().optional(),
+  /** Where phone one-time codes go: SMS, WhatsApp, or SMS with WhatsApp as the fallback. */
+  OTP_CHANNEL: z.enum(['sms', 'whatsapp', 'sms_then_whatsapp']).default('sms'),
   PUSH_PROVIDER: z.enum(['none', 'mock', 'webpush']).default('mock'),
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
@@ -84,6 +92,18 @@ const envSchema = z.object({
   GST_SELLER_ADDRESS: z.string().default('Bengaluru, Karnataka, India'),
   GST_SAC_CODE: z.string().default('999799'),
 
+  /** Version number of FIELD_ENCRYPTION_KEY. Increase it (and move the old key to _PREVIOUS) when rotating. */
+  FIELD_ENCRYPTION_KEY_VERSION: z.coerce.number().int().min(1).default(1),
+  /** JSON object of earlier keys by version, for example {"1":"<base64>"}. */
+  FIELD_ENCRYPTION_KEYS_PREVIOUS: z.string().optional(),
+  /** Stable key for lookup hashes (phone). Set once and never change it. */
+  FIELD_BLIND_INDEX_KEY: z.string().optional(),
+  /** Alternative to FIELD_ENCRYPTION_KEY: the key encrypted by AWS KMS (base64), unwrapped at start-up. */
+  FIELD_ENCRYPTION_KEY_KMS_WRAPPED: z.string().optional(),
+  AWS_REGION: z.string().optional(),
+  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_ENVIRONMENT: z.string().default('development'),
+  SENTRY_RELEASE: z.string().optional(),
   FIELD_ENCRYPTION_KEY: z
     .string()
     .regex(/^[A-Za-z0-9+/=]{43,}$/, 'Expected a base64-encoded 32 byte key')
@@ -121,6 +141,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     const problems: string[] = [];
     if (env.FIELD_ENCRYPTION_KEY === 'ZGV2LW9ubHktZmllbGQtZW5jcnlwdGlvbi1rZXktMzI=') problems.push('FIELD_ENCRYPTION_KEY is the development key');
     if (env.EMAIL_PROVIDER === 'mock') problems.push('EMAIL_PROVIDER=mock would never send email');
+    if (env.EMAIL_PROVIDER === 'resend' && !(env.RESEND_API_KEY && env.RESEND_WEBHOOK_SECRET)) problems.push('RESEND_API_KEY and RESEND_WEBHOOK_SECRET are required for Resend');
+    if (env.WHATSAPP_PROVIDER === 'meta' && !(env.WHATSAPP_VERIFY_TOKEN && env.WHATSAPP_APP_SECRET)) problems.push('WHATSAPP_VERIFY_TOKEN and WHATSAPP_APP_SECRET are required for WhatsApp webhooks');
     if (env.SMS_PROVIDER === 'mock') problems.push('SMS_PROVIDER=mock would never send OTP codes');
     if (env.SMS_PROVIDER === 'msg91' && !(env.MSG91_AUTH_KEY && env.MSG91_OTP_TEMPLATE_ID)) problems.push('MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID are required');
     if (env.STORAGE_PROVIDER === 'memory') problems.push('STORAGE_PROVIDER=memory would lose every upload');
@@ -130,6 +152,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (!env.REDIS_URL) problems.push('REDIS_URL is required (shared rate limits and the job queue)');
     if (!env.APP_URL.startsWith('https://') || !env.ADMIN_URL.startsWith('https://')) problems.push('APP_URL and ADMIN_URL must be https');
     if (env.CORS_ORIGINS.some((o) => !o.startsWith('https://'))) problems.push('CORS_ORIGINS must all be https');
+    if (env.FIELD_ENCRYPTION_KEY_VERSION > 1 && !env.FIELD_ENCRYPTION_KEYS_PREVIOUS) problems.push('FIELD_ENCRYPTION_KEYS_PREVIOUS must list the earlier keys when the key version is above 1');
+    if (!env.SENTRY_DSN) problems.push('SENTRY_DSN is required so production errors are visible');
     if (problems.length) throw new Error(`Refusing to start in production: ${problems.join('; ')}`);
   }
   return env;

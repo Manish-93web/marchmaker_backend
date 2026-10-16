@@ -51,14 +51,45 @@ export async function getReviewSettings(): Promise<ReviewSettings> {
   return { ...DEFAULT_REVIEW_SETTINGS, ...(await read<ReviewSettings>('review')) };
 }
 
+export const retentionSettingsSchema = z.object({
+  /** Days after a decision before identity images are deleted. */
+  evidenceDays: z.number().int().min(1).max(365),
+  /** Days a member can change their mind after asking to delete their account. */
+  deletionGraceDays: z.number().int().min(1).max(60),
+});
+export type RetentionSettings = z.infer<typeof retentionSettingsSchema>;
+
+export const dataRequestSettingsSchema = z.object({
+  /** When on, a super admin approves every export and deletion before it runs. */
+  requireApproval: z.boolean(),
+});
+export type DataRequestSettings = z.infer<typeof dataRequestSettingsSchema>;
+
+/** Defaults come from the environment and constants, so nothing changes until staff edit them. */
+export async function getRetention(env: { EVIDENCE_RETENTION_DAYS: number }): Promise<RetentionSettings> {
+  return {
+    evidenceDays: env.EVIDENCE_RETENTION_DAYS,
+    deletionGraceDays: DEFAULTS.accountDeletionGraceDays,
+    ...(await read<RetentionSettings>('retention')),
+  };
+}
+
+export async function getDataRequestSettings(): Promise<DataRequestSettings> {
+  return { requireApproval: false, ...(await read<DataRequestSettings>('data_requests')) };
+}
+
+export type SettingKey = 'matching' | 'review' | 'retention' | 'data_requests';
+
 export async function saveSettings(
-  key: 'matching' | 'review',
+  key: SettingKey,
   value: unknown,
   actorId: string,
+  env: { EVIDENCE_RETENTION_DAYS: number } = { EVIDENCE_RETENTION_DAYS: 30 },
 ): Promise<{ before: unknown; after: unknown }> {
-  const schema = key === 'matching' ? matchingSettingsSchema : reviewSettingsSchema;
-  const parsed = schema.parse(value);
-  const before = key === 'matching' ? await getMatchingConfig() : await getReviewSettings();
+  const schemas = { matching: matchingSettingsSchema, review: reviewSettingsSchema, retention: retentionSettingsSchema, data_requests: dataRequestSettingsSchema };
+  const parsed = schemas[key].parse(value);
+  const before =
+    key === 'matching' ? await getMatchingConfig() : key === 'review' ? await getReviewSettings() : key === 'retention' ? await getRetention(env) : await getDataRequestSettings();
   await Setting.updateOne({ key }, { $set: { value: parsed, updatedBy: actorId } }, { upsert: true });
   return { before, after: parsed };
 }

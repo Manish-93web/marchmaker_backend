@@ -74,7 +74,7 @@ const dataRequestSchema = new Schema(
     kind: { type: String, enum: ['export', 'deletion'], required: true },
     status: {
       type: String,
-      enum: ['pending', 'processing', 'ready', 'completed', 'failed', 'cancelled'],
+      enum: ['awaiting_approval', 'pending', 'processing', 'ready', 'completed', 'failed', 'cancelled', 'rejected'],
       default: 'pending',
       index: true,
     },
@@ -82,6 +82,9 @@ const dataRequestSchema = new Schema(
     expiresAt: Date,
     error: String,
     completedAt: Date,
+    approvedBy: Schema.Types.ObjectId,
+    decidedAt: Date,
+    decisionNote: String,
   },
   base,
 );

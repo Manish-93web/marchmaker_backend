@@ -1,4 +1,6 @@
-import { DEFAULTS, journeyMachine, notificationPrefsSchema, type JourneyState } from '@marchmaker/shared';
+import { getDataRequestSettings, getRetention } from './settings';
+import { WhatsAppOptIn } from '../models/messaging';
+import { journeyMachine, notificationPrefsSchema, type JourneyState } from '@marchmaker/shared';
 import type { AppContext } from '../context';
 import { audit, emit, logTransition } from '../lib/audit';
 import { AppError, badRequest, conflict, notFound } from '../lib/errors';
@@ -94,7 +96,9 @@ export async function scheduleDeletion(
     throw badRequest('Your password is incorrect');
   }
 
-  const when = new Date(Date.now() + DEFAULTS.accountDeletionGraceDays * DAY);
+  const settings = await getDataRequestSettings();
+  const grace = (await getRetention(ctx.env)).deletionGraceDays;
+  const when = new Date(Date.now() + grace * DAY);
   user.statusBeforeDeletion = user.status;
   user.journeyBeforeDeletion = user.journeyState;
   user.status = 'deletion_scheduled';
@@ -102,7 +106,8 @@ export async function scheduleDeletion(
   user.journeyState = 'deletion_scheduled';
   await user.save();
   await logTransition('user_journey', userId, user.journeyBeforeDeletion, 'deletion_scheduled', userId);
-  await DataRequest.create({ userId, kind: 'deletion', status: 'pending', expiresAt: when });
+  // With approval switched on, the account stays scheduled but is not erased until a super admin agrees.
+  await DataRequest.create({ userId, kind: 'deletion', status: settings.requireApproval ? 'awaiting_approval' : 'pending', expiresAt: when });
   await revokeAllSessions(userId, 'deletion_scheduled', currentSessionId);
   await audit(undefined, { action: 'account.deletion_scheduled', actorId: userId, subjectType: 'user', subjectId: userId });
   await emit('account.deletion_scheduled', { userId, purgeAt: when.toISOString() });
@@ -133,7 +138,7 @@ export async function restoreAccount(userId: string) {
   user.statusBeforeDeletion = undefined;
   user.journeyBeforeDeletion = undefined;
   await user.save();
-  await DataRequest.updateMany({ userId, kind: 'deletion', status: 'pending' }, { $set: { status: 'cancelled' } });
+  await DataRequest.updateMany({ userId, kind: 'deletion', status: { $in: ['pending', 'awaiting_approval'] } }, { $set: { status: 'cancelled' } });
   await logTransition('user_journey', userId, 'deletion_scheduled', user.journeyState, userId, 'restored');
   await emit('account.restored', { userId });
 }
@@ -142,8 +147,9 @@ export async function requestExport(userId: string) {
   const since = new Date(Date.now() - DAY);
   const recent = await DataRequest.exists({ userId, kind: 'export', createdAt: { $gt: since }, status: { $ne: 'failed' } });
   if (recent) throw new AppError(429, 'RATE_LIMITED', 'You can request one export per day');
-  const req = await DataRequest.create({ userId, kind: 'export', status: 'pending' });
-  await emit('account.export_requested', { userId, dataRequestId: String(req._id) });
+  const { requireApproval } = await getDataRequestSettings();
+  const req = await DataRequest.create({ userId, kind: 'export', status: requireApproval ? 'awaiting_approval' : 'pending' });
+  if (!requireApproval) await emit('account.export_requested', { userId, dataRequestId: String(req._id) });
   return { id: String(req._id), status: req.status };
 }
 
@@ -189,6 +195,10 @@ export async function setConsent(
   }
   const legal = purpose === 'terms' || purpose === 'privacy' ? await latestLegal([purpose]) : [];
   await recordConsent(userId, purpose, granted, { ...meta, documentVersion: legal[0]?.version });
+  if (purpose === 'whatsapp') {
+    const u = await User.findById(userId).select('phoneEnc phoneHash').lean();
+    if (u?.phoneHash) await WhatsAppOptIn.create({ userId, phoneHash: u.phoneHash, status: granted ? 'opted_in' : 'opted_out', source: 'settings' });
+  }
 }
 
 export async function consentHistory(userId: string) {

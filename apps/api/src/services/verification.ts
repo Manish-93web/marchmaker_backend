@@ -1,3 +1,4 @@
+import { getRetention } from './settings';
 import { randomUUID } from 'node:crypto';
 import {
   DEFAULTS,
@@ -58,8 +59,9 @@ async function assertReady(userId: string) {
 
 /** The member-facing view: plain states and kind messages, never reviewer notes or evidence. */
 export async function getStatus(ctx: AppContext, userId: string) {
-  const [c, user, kyc] = await Promise.all([latestCase(userId), User.findById(userId), kycAvailable(ctx)]);
+  const [c, user, kyc, retention] = await Promise.all([latestCase(userId), User.findById(userId), kycAvailable(ctx), getRetention(ctx.env)]);
   if (!user) throw notFound();
+  const evidenceDays = retention.evidenceDays;
   const state = c?.status ?? 'none';
   const uploaded = Object.fromEntries(
     EVIDENCE_KINDS.map((k) => [k, !!(c?.evidence?.[k] as { uploadedAt?: Date } | undefined)?.uploadedAt]),
@@ -86,8 +88,8 @@ export async function getStatus(ctx: AppContext, userId: string) {
       phone: !!user.phoneVerifiedAt,
       email: !!user.emailVerifiedAt,
     },
-    retentionDays: ctx.env.EVIDENCE_RETENTION_DAYS,
-    retention: `Only our verification team can see these. They are deleted ${ctx.env.EVIDENCE_RETENTION_DAYS} days after a decision.`,
+    retentionDays: evidenceDays,
+    retention: `Only our verification team can see these. They are deleted ${evidenceDays} days after a decision.`,
   };
 }
 

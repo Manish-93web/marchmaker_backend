@@ -296,6 +296,7 @@ describe('production configuration guard', () => {
     WHATSAPP_PROVIDER: 'none',
     PUSH_PROVIDER: 'none',
     REDIS_URL: 'redis://redis:6379',
+    SENTRY_DSN: 'https://public@o0.ingest.sentry.io/1',
     APP_URL: 'https://app.example.com',
     ADMIN_URL: 'https://admin.example.com',
     CORS_ORIGINS: 'https://app.example.com,https://admin.example.com',

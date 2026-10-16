@@ -12,6 +12,7 @@ import { docsRouter } from './openapi';
 import { kycWebhookRouter } from './routes/verification';
 import { paymentsWebhookRouter } from './routes/billing';
 import { callsWebhookRouter } from './routes/extras';
+import { messagingWebhooksRouter } from './routes/messaging';
 import { buildContext, type AppContext } from './context';
 import { MemoryMailer } from './lib/mailer';
 import { MemorySms } from './lib/sms';
@@ -52,6 +53,7 @@ export function createApp({ env, log, isReady, ctx: given }: AppDeps): Express {
   app.use(`${API_PREFIX}/webhooks`, kycWebhookRouter(ctx));
   app.use(`${API_PREFIX}/webhooks`, paymentsWebhookRouter(ctx));
   app.use(`${API_PREFIX}/webhooks`, callsWebhookRouter(ctx));
+  app.use(`${API_PREFIX}/webhooks`, messagingWebhooksRouter(ctx));
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 

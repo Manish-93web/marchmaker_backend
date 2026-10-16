@@ -98,10 +98,15 @@ export async function buildExport(ctx: AppContext, dataRequestId: string): Promi
 
 /** Hard-deletes members whose 14-day grace period has ended. Returns how many were purged. */
 export async function purgeDueAccounts(ctx: AppContext, now: Date = new Date()): Promise<number> {
-  const due = await User.find({ status: 'deletion_scheduled', deletionScheduledFor: { $lte: now } })
+  const candidates = await User.find({ status: 'deletion_scheduled', deletionScheduledFor: { $lte: now } })
     .select('_id email firstName')
     .limit(100)
     .lean();
+  // A deletion that is still waiting for a super admin is held, however long ago the grace period ended.
+  const held = new Set(
+    (await DataRequest.find({ userId: { $in: candidates.map((c) => c._id) }, kind: 'deletion', status: 'awaiting_approval' }).select('userId').lean()).map((r) => String(r.userId)),
+  );
+  const due = candidates.filter((c) => !held.has(String(c._id)));
   let purged = 0;
 
   for (const u of due) {

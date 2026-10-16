@@ -11,6 +11,8 @@ import { MEMBER_PREFIXES, memberRouter } from './member';
 import { adminVerificationRouter, verificationRouter } from './verification';
 import { adminRouter } from './admin';
 import { SOCIAL_PREFIXES, socialRouter } from './social';
+import { adminMessagingRouter } from './messaging';
+import { adminSystemRouter } from './system';
 import { EXTRAS_PREFIXES, adminExtrasRouter, extrasRouter, publicExtrasRouter } from './extras';
 import { GROWTH_PREFIXES, adminGrowthRouter, growthRouter, publicGrowthRouter } from './growth';
 import { REFERRAL_PREFIXES, adminReferralsRouter, referralsRouter } from './referrals';
@@ -67,6 +69,8 @@ export function v1Router(ctx: AppContext): Router {
   r.use('/admin', adminReferralsRouter());
   r.use('/admin', adminGrowthRouter());
   r.use('/admin', adminExtrasRouter(ctx));
+  r.use('/admin', adminMessagingRouter(ctx));
+  r.use('/admin', adminSystemRouter(ctx));
   r.use('/verification', verificationRouter(ctx));
   r.use('/admin/verification', adminVerificationRouter(ctx));
   r.use('/admin', adminRouter(ctx));

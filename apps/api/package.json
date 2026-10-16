@@ -14,11 +14,14 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",
+    "@aws-sdk/client-kms": "^3.1152.0",
     "@aws-sdk/client-s3": "^3.1152.0",
     "@aws-sdk/s3-request-presigner": "^3.1152.0",
     "@marchmaker/email": "workspace:^",
     "@marchmaker/shared": "workspace:^",
+    "@sentry/node": "^11.8.0",
     "argon2": "^0.45.1",
+    "bullmq": "^6.3.15",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",
@@ -74,6 +77,8 @@
     "./notification-jobs": "./src/jobs/notificationJobs.ts",
     "./support-jobs": "./src/jobs/supportJobs.ts",
     "./referral-jobs": "./src/jobs/referralJobs.ts",
-    "./growth-jobs": "./src/jobs/growthJobs.ts"
+    "./growth-jobs": "./src/jobs/growthJobs.ts",
+    "./keys": "./src/lib/keys.ts",
+    "./sentry": "./src/lib/sentry.ts"
   }
 }

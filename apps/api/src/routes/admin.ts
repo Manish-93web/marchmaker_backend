@@ -8,7 +8,7 @@ import { validate } from '../middleware/validate';
 import { audit } from '../lib/audit';
 import { runMatching } from '../services/matching';
 import * as matches from '../services/matchReview';
-import { getMatchingConfig, getReviewSettings, saveSettings } from '../services/settings';
+import { getDataRequestSettings, getMatchingConfig, getRetention, getReviewSettings, saveSettings } from '../services/settings';
 import { User } from '../models/core';
 import { withTransaction } from '../db/connection';
 import * as creditsSvc from '../services/credits';
@@ -249,16 +249,21 @@ export function adminRouter(ctx: AppContext): Router {
     '/settings',
     requirePermission('settings.manage'),
     asyncHandler(async (_req, res) => {
-      noStore(res, { matching: await getMatchingConfig(), review: await getReviewSettings() });
+      noStore(res, {
+        matching: await getMatchingConfig(),
+        review: await getReviewSettings(),
+        retention: await getRetention(ctx.env),
+        data_requests: await getDataRequestSettings(),
+      });
     }),
   );
   r.put(
     '/settings/:key',
     requirePermission('settings.manage'),
     asyncHandler(async (req, res) => {
-      const key = z.enum(['matching', 'review']).parse(req.params.key);
+      const key = z.enum(['matching', 'review', 'retention', 'data_requests']).parse(req.params.key);
       const a = authedUser(req);
-      const { before, after } = await saveSettings(key, req.body, a.userId);
+      const { before, after } = await saveSettings(key, req.body, a.userId, ctx.env);
       await audit(req, {
         action: `settings.${key}_changed`,
         actorId: a.userId,

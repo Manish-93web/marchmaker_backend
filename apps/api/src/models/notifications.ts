@@ -32,7 +32,10 @@ const deliverySchema = new Schema(
     notificationId: { type: Schema.Types.ObjectId, required: true },
     userId: { type: Schema.Types.ObjectId, required: true, index: true },
     channel: { type: String, enum: NOTIFICATION_CHANNELS, required: true },
-    status: { type: String, enum: ['queued', 'sent', 'failed', 'skipped'], default: 'queued', index: true },
+    status: { type: String, enum: ['queued', 'sent', 'delivered', 'bounced', 'complained', 'failed', 'skipped'], default: 'queued', index: true },
+    /** The provider's message id, to match delivery events. */
+    providerId: { type: String, index: true, sparse: true },
+    deliveredAt: Date,
     reason: String,
     sendAfter: { type: Date, default: Date.now, index: true },
     attempts: { type: Number, default: 0 },

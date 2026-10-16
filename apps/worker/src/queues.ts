@@ -1,6 +1,7 @@
 import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import type { Logger } from 'pino';
+import { captureError } from '@marchmaker/api/sentry';
 import type { OutboxEvent } from './outbox';
 
 export const QUEUE_NAMES = { events: 'domain-events', deadLetter: 'dead-letter' } as const;
@@ -49,6 +50,7 @@ export function startQueues(redisUrl: string, log: Logger): Queues {
   worker.on('failed', async (job, err) => {
     if (!job) return;
     log.warn({ eventType: job.name, attempt: job.attemptsMade, err: err.message }, 'job failed');
+    if (job.attemptsMade >= (job.opts.attempts ?? 1)) captureError(err, { job: job.name });
     if (job.attemptsMade >= (job.opts.attempts ?? 1)) {
       await deadLetter.add(job.name, { original: job.data, error: err.message, failedAt: new Date().toISOString() });
     }

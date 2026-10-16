@@ -5,11 +5,15 @@ import { buildContext } from './context';
 import { createMailer } from './lib/mailer';
 import { createSms } from './lib/sms';
 import { loadEnv } from './config/env';
+import { resolveKmsKeys } from './lib/keys';
+import { captureError, initSentry, flushSentry } from './lib/sentry';
 import { connectMongo, disconnectMongo, isMongoReady } from './db/connection';
 import { createLogger } from './lib/logger';
 
 async function main() {
-  const env = loadEnv();
+  // The field-encryption key may be stored wrapped by KMS; it is unwrapped once here, in memory only.
+  const env = await resolveKmsKeys(loadEnv());
+  initSentry(env, 'api');
   const log = createLogger(env.LOG_LEVEL, env.NODE_ENV === 'development');
 
   let shuttingDown = false;
@@ -28,6 +32,7 @@ async function main() {
     const force = setTimeout(() => process.exit(1), 15_000);
     force.unref();
     server.close(async () => {
+      await ctx.jobs?.close().catch(() => undefined);
       await ctx.redis?.quit().catch(() => undefined);
       await disconnectMongo().catch(() => undefined);
       process.exit(0);
@@ -35,7 +40,11 @@ async function main() {
   };
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
-  process.on('unhandledRejection', (err) => log.error({ err }, 'unhandledRejection'));
+  process.on('unhandledRejection', (err) => {
+    log.error({ err }, 'unhandledRejection');
+    captureError(err);
+  });
+  process.on('beforeExit', () => void flushSentry());
 }
 
 main().catch((err) => {

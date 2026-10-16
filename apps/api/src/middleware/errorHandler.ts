@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import { InvalidTransitionError } from '@marchmaker/shared';
 import type { Logger } from 'pino';
 import { AppError } from '../lib/errors';
+import { captureError } from '../lib/sentry';
 
 export const notFoundHandler: RequestHandler = (req, res) => {
   res.status(404).json({
@@ -34,7 +35,10 @@ export function errorHandler(log: Logger, isProd: boolean): ErrorRequestHandler 
       message = status === 413 ? 'That request is too large' : 'We could not read that request';
     }
 
-    if (status >= 500) log.error({ err, requestId: req.id, path: req.path }, 'unhandled error');
+    if (status >= 500) {
+      log.error({ err, requestId: req.id, path: req.path }, 'unhandled error');
+      captureError(err, { requestId: String(req.id), path: req.route?.path ?? req.path });
+    }
     else log.debug({ code, requestId: req.id, path: req.path }, 'request rejected');
 
     if (res.headersSent) return;

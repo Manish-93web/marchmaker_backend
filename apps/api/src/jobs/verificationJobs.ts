@@ -1,3 +1,4 @@
+import { getRetention } from '../services/settings';
 import { EVIDENCE_KINDS, evaluateKycResult, type KycResult } from '@marchmaker/shared';
 import type { AppContext } from '../context';
 import { audit, emit } from '../lib/audit';
@@ -41,7 +42,7 @@ async function applyResult(ctx: AppContext, v: VerificationDoc, result: KycResul
           decidedAt: now,
           docType: result.docType ?? v.docType,
           docLast4: result.docLast4 ?? v.docLast4,
-          purgeAfter: new Date(now.getTime() + ctx.env.EVIDENCE_RETENTION_DAYS * DAY),
+          purgeAfter: new Date(now.getTime() + (await getRetention(ctx.env)).evidenceDays * DAY),
         },
       },
     );

@@ -1,13 +1,16 @@
 import 'dotenv/config';
 import { connectMongo, disconnectMongo } from '@marchmaker/api/db';
 import { loadEnv } from '@marchmaker/api/env';
+import { resolveKmsKeys } from '@marchmaker/api/keys';
+import { captureError, initSentry } from '@marchmaker/api/sentry';
 import { createLogger } from '@marchmaker/api/logger';
 import { createWorkerContext, registerHandlers, runReleaseTick, runSweeps } from './handlers';
 import { relayOutboxOnce } from './outbox';
 import { startQueues, type Queues } from './queues';
 
 async function main() {
-  const env = loadEnv();
+  const env = await resolveKmsKeys(loadEnv());
+  initSentry(env, 'worker');
   const log = createLogger(env.LOG_LEVEL, env.NODE_ENV === 'development');
   await connectMongo(env.MONGODB_URI, log);
 
@@ -35,17 +38,24 @@ async function main() {
         if (n === 0) await new Promise((r) => setTimeout(r, 1_000));
       } catch (err) {
         log.error({ err }, 'outbox relay error');
+        captureError(err, { job: 'outbox-relay' });
         await new Promise((r) => setTimeout(r, 5_000));
       }
     }
   })();
 
   const sweep = setInterval(() => {
-    runSweeps(ctx).catch((err) => log.error({ err }, 'sweep failed'));
+    runSweeps(ctx).catch((err) => {
+      log.error({ err }, 'sweep failed');
+      captureError(err, { job: 'sweeps' });
+    });
   }, 10 * 60_000);
 
   const release = setInterval(() => {
-    runReleaseTick(ctx).catch((err) => log.error({ err }, 'release tick failed'));
+    runReleaseTick(ctx).catch((err) => {
+      log.error({ err }, 'release tick failed');
+      captureError(err, { job: 'release-tick' });
+    });
   }, 60_000);
 
   const shutdown = async (signal: string) => {

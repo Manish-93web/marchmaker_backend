@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { loadEnv } from '../config/env';
 import { connectMongo, disconnectMongo } from '../db/connection';
-import { FieldCrypto } from '../lib/crypto';
+import { fieldCryptoFromEnv } from '../lib/keys';
 import { createLogger } from '../lib/logger';
 import { hashPassword } from '../lib/passwords';
 import { LegalDocument } from '../models/auth';
@@ -53,7 +53,7 @@ async function main() {
   const password = process.env.SEED_ADMIN_PASSWORD;
   if (email && password) {
     if (password.length < 12) throw new Error('SEED_ADMIN_PASSWORD must be at least 12 characters');
-    const crypto = new FieldCrypto(env.FIELD_ENCRYPTION_KEY);
+    const crypto = fieldCryptoFromEnv(env);
     await User.updateOne(
       { email },
       {

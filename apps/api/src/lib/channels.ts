@@ -6,7 +6,7 @@ import type { Env } from '../config/env';
 
 export interface WhatsAppSender {
   /** Sends an approved template message. Free-form text is not allowed outside the 24 hour window. */
-  sendTemplate(toE164: string, template: string, vars: string[]): Promise<void>;
+  sendTemplate(toE164: string, template: string, vars: string[]): Promise<{ id?: string }>;
 }
 
 export class MemoryWhatsApp implements WhatsAppSender {
@@ -20,6 +20,7 @@ export class MemoryWhatsApp implements WhatsAppSender {
     }
     this.sent.push({ to, template, vars });
     this.log?.info({ template }, 'mock whatsapp captured');
+    return { id: `wamid.mock${this.sent.length}` };
   }
 }
 
@@ -47,6 +48,8 @@ export class MetaWhatsApp implements WhatsAppSender {
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) throw new Error(`whatsapp returned ${res.status}`);
+    const json = (await res.json().catch(() => ({}))) as { messages?: { id?: string }[] };
+    return { id: json.messages?.[0]?.id };
   }
 }
 

@@ -1,9 +1,12 @@
 import type { Logger } from 'pino';
 import type { Env } from './config/env';
-import { FieldCrypto } from './lib/crypto';
+import { fieldCryptoFromEnv } from './lib/keys';
+import type { FieldCrypto } from './lib/crypto';
 import type { Mailer } from './lib/mailer';
 import type { SmsSender } from './lib/sms';
 import { Redis } from 'ioredis';
+import { SuppressingMailer } from './lib/mailer';
+import { EmailSuppression } from './models/messaging';
 import { memoryAttemptLimiter, redisAttemptLimiter, type AttemptLimiter } from './lib/attemptLimiter';
 import { createStorage, type ObjectStorage } from './lib/storage';
 import { NoopModeration, type ImageModeration } from './lib/moderation';
@@ -11,6 +14,7 @@ import { createTranscriber, type TranscriptionProvider } from './lib/transcripti
 import { createNarrativeRewriter } from './lib/narrativeRewriter';
 import { createKycProvider, CircuitBreaker, type KycProvider } from './lib/kyc';
 import { createPush, createWhatsApp, type PushSender, type WhatsAppSender } from './lib/channels';
+import { BullJobsAdmin, type JobsAdmin } from './lib/jobsAdmin';
 import { createAstrology, type AstrologyProvider } from './lib/astrology';
 import { createCallProvider, type CallProvider } from './lib/telephony';
 import { createPaymentProvider, type PaymentProvider } from './lib/payments';
@@ -37,12 +41,24 @@ export interface AppContext {
   whatsapp: WhatsAppSender | null;
   push: PushSender | null;
   calls: CallProvider | null;
+  /** Queue controls for the admin console; null without Redis. */
+  jobs: JobsAdmin | null;
   astrology: AstrologyProvider | null;
   permissions: PermissionStore;
   /** Shared Redis connection (limits across instances); null in tests and single-instance setups. */
   redis: Redis | null;
   loginLimiter: AttemptLimiter;
   otpLimiter: AttemptLimiter;
+}
+
+/** Adds the suppression check around whichever mailer was supplied. */
+function wrapMailer(base: Pick<AppContext, 'env' | 'log' | 'mailer'>) {
+  const crypto = fieldCryptoFromEnv(base.env);
+  return new SuppressingMailer(
+    base.mailer,
+    async (email) => (await EmailSuppression.findOne({ toHash: crypto.blindIndex(email) }).select('kind').lean())?.kind ?? null,
+    base.log,
+  );
 }
 
 export function buildContext(
@@ -59,7 +75,8 @@ export function buildContext(
     redis ? redisAttemptLimiter(redis, `rl:${name}`, limit, windowMs, warn) : memoryAttemptLimiter(limit, windowMs);
   return {
     ...base,
-    crypto: new FieldCrypto(base.env.FIELD_ENCRYPTION_KEY),
+    mailer: wrapMailer(base),
+    crypto: fieldCryptoFromEnv(base.env),
     storage: createStorage(base.env),
     moderation: new NoopModeration(),
     transcriber: createTranscriber(base.env),
@@ -69,6 +86,7 @@ export function buildContext(
     whatsapp: createWhatsApp(base.env, base.log),
     push: createPush(base.env),
     calls: createCallProvider(base.env, base.log),
+    jobs: base.env.REDIS_URL && base.env.NODE_ENV !== 'test' ? new BullJobsAdmin(base.env.REDIS_URL) : null,
     astrology: createAstrology(base.env),
     kycBreaker: new CircuitBreaker({ failureThreshold: 5, resetAfterMs: 30_000 }),
     permissions: new PermissionStore(),

@@ -1,3 +1,4 @@
+import { getRetention } from './settings';
 import {
   DECISION_CHECKLIST,
   DEFAULTS,
@@ -128,7 +129,7 @@ export async function decide(
   if (!(OPEN as readonly string[]).includes(c.status)) throw conflict('This verification has already been decided');
   const userId = String(c.userId);
   const now = new Date();
-  const retention = ctx.env.EVIDENCE_RETENTION_DAYS * DAY;
+  const retention = (await getRetention(ctx.env)).evidenceDays * DAY;
 
   if (d.decision === 'approve') {
     const failed = DECISION_CHECKLIST.filter((k) => !d.checklist[k]);
