@@ -1,7 +1,11 @@
+import dns from 'node:dns';
 import mongoose from 'mongoose';
 import type { Logger } from 'pino';
 
 export async function connectMongo(uri: string, log: Logger): Promise<typeof mongoose> {
+  // Some networks refuse the SRV lookup that mongodb+srv:// URLs need. DNS_SERVERS (comma separated) overrides the resolver for that case.
+  const servers = process.env.DNS_SERVERS?.split(',').map((x) => x.trim()).filter(Boolean);
+  if (servers?.length) dns.setServers(servers);
   mongoose.set('strictQuery', true);
   mongoose.connection.on('disconnected', () => log.warn('mongo disconnected'));
   mongoose.connection.on('reconnected', () => log.info('mongo reconnected'));
