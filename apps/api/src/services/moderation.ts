@@ -13,6 +13,7 @@ import { Report } from '../models/social';
 import { Appeal, ModerationAction } from '../models/safety';
 import { changeStatus } from './adminMembers';
 import { sendNotice } from './notify';
+import * as attachments from './attachments';
 
 interface Actor {
   userId: string;
@@ -85,10 +86,10 @@ export async function detail(ctx: AppContext, req: Request, id: string, actor: A
   ]);
 
   const mayReadMessages = actor.permissions.includes('messages.view_reported');
-  if (mayReadMessages && r.transcript?.length) {
+  if (mayReadMessages && (r.transcript?.length || r.evidence?.length)) {
     // Reading private messages is always recorded.
     await audit(req, {
-      action: 'report.transcript_viewed',
+      action: r.evidence?.length ? 'report.evidence_viewed' : 'report.transcript_viewed',
       actorId: actor.userId,
       actorRoles: actor.roles,
       subjectType: 'report',
@@ -112,6 +113,9 @@ export async function detail(ctx: AppContext, req: Request, id: string, actor: A
     otherReports: otherReports.map(present),
     history: actions.map((a) => ({ id: sid(a._id), action: a.action, reason: a.reason, at: a.createdAt, by: sid(a.by) })),
     transcript: mayReadMessages ? r.transcript : null,
+    evidence: mayReadMessages ? await attachments.withUrls(ctx, r.evidence as attachments.StoredAttachment[]) : [],
+    evidenceRestricted: !mayReadMessages && (r.evidence?.length ?? 0) > 0,
+    sourceTicketId: r.sourceTicketId ? sid(r.sourceTicketId) : null,
     transcriptRestricted: !mayReadMessages && (r.transcript?.length ?? 0) > 0,
     resolution: r.resolution ?? null,
   };

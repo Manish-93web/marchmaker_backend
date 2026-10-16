@@ -150,6 +150,8 @@ export async function photoQueue(ctx: AppContext, status: 'pending' | 'approved'
       status: p.status,
       uploadedAt: p.createdAt,
       moderation: p.moderation ?? null,
+      /** Shown to the reviewer as a prompt to look closely; it never rejects a photo by itself. */
+      flags: [...(p.moderation?.faceDetected === false ? ['no_face'] : []), ...(p.moderation?.faceDetected == null ? ['not_checked'] : [])],
       url: p.variants?.md ? await ctx.storage.presignGet('photos', p.variants.md, DEFAULTS.signedUrlTtlSec) : null,
     })),
   );

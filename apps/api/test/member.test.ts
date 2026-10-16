@@ -286,6 +286,22 @@ describe('photos', () => {
     expect((await Photo.findById(id))?.status).toBe('pending');
   });
 
+  it('records the automated face and content check, rejects explicit images, and leaves the rest to a human', async () => {
+    const t = setup();
+    const m = await member(t);
+    t.ctx.moderation = { check: async () => ({ faceDetected: false, nsfw: false, provider: 'stub' }) };
+    const noFace = await uploadPhoto(t, m, await jpeg({ seed: 31 }));
+    await processPhoto(t.ctx, noFace);
+    const p = (await Photo.findById(noFace))!;
+    expect(p.status).toBe('pending'); // a missing face only flags it; a person decides
+    expect(p.moderation).toMatchObject({ faceDetected: false, provider: 'stub' });
+
+    t.ctx.moderation = { check: async () => ({ faceDetected: true, nsfw: true, provider: 'stub' }) };
+    const explicit = await uploadPhoto(t, m, await jpeg({ seed: 32 }));
+    await processPhoto(t.ctx, explicit);
+    expect((await Photo.findById(explicit))?.rejectionReason).toBe('nsfw');
+  });
+
   it('rejects exact duplicates and tiny images', async () => {
     const t = setup();
     const m = await member(t);

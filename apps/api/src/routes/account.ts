@@ -42,8 +42,9 @@ export function accountRouter(ctx: AppContext): Router {
       if (!dr?.resultKey) throw notFound('This export is no longer available');
       const file = path.resolve(ctx.env.EXPORT_DIR, path.basename(dr.resultKey));
       if (!existsSync(file)) throw notFound('This export is no longer available');
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.setHeader('Content-Disposition', 'attachment; filename="marchmaker-data-export.json"');
+      const isZip = file.endsWith('.zip');
+      res.setHeader('Content-Type', isZip ? 'application/zip' : 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="marchmaker-data-export.${isZip ? 'zip' : 'json'}"`);
       res.setHeader('Cache-Control', 'no-store');
       createReadStream(file).pipe(res);
     }),

@@ -143,7 +143,7 @@ export function socialRouter(ctx: AppContext): Router {
     '/reports',
     validate({ body: reportSchema }),
     asyncHandler(async (req, res) => {
-      res.status(201).json(await safety.report(authedUser(req).userId, req.body));
+      res.status(201).json(await safety.report(ctx, authedUser(req).userId, req.body));
     }),
   );
   r.get(

@@ -74,6 +74,11 @@ export async function dispatchEvent(ctx: AppContext, eventType: string, payload:
       ctx.log.error({ err }, 'on-call alert failed');
       throw err;
     }
+    // A second channel for critical safety reports: a missed email must not delay a response.
+    for (const number of ctx.env.ONCALL_WHATSAPP?.split(',').map((s) => s.trim()).filter(Boolean) ?? []) {
+      if (!ctx.whatsapp || !(await templateReady(ctx, 'mm_oncall_alert'))) break;
+      await ctx.whatsapp.sendTemplate(number, 'mm_oncall_alert', ['A critical safety report was filed', String(payload.reportId ?? '').slice(-6)]).catch((err) => ctx.log.warn({ err }, 'on-call whatsapp failed'));
+    }
     return 1;
   }
   const spec = NOTIFICATION_SPECS[eventType];

@@ -80,6 +80,7 @@ export async function handleWebhook(ctx: AppContext, payload: MetaPayload) {
 /** Seed templates every deployment needs. Names must match what is approved in the Meta dashboard. */
 export const DEFAULT_TEMPLATES = [
   { name: 'mm_notification', language: 'en', category: 'utility' as const, variables: 2, body: '{{1}}. {{2}}', purpose: 'Introduction, payment and verification updates' },
+  { name: 'mm_oncall_alert', language: 'en', category: 'utility' as const, variables: 2, body: 'Marchmaker on-call: {{1}} (ref {{2}}). Open the admin console.', purpose: 'Pages on-call for critical or overdue safety reports' },
   { name: 'mm_otp', language: 'en', category: 'authentication' as const, variables: 1, body: '{{1}} is your Marchmaker code. It expires in 5 minutes. Do not share it.', purpose: 'One-time sign-in codes' },
 ];
 

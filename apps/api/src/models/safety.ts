@@ -58,6 +58,7 @@ const ticketSchema = new Schema(
     lastMessageBy: { type: String, enum: ['member', 'staff'] },
     resolvedAt: Date,
     slaAlertedAt: Date,
+    csat: { rating: Number, comment: String, at: Date, _id: false },
   },
   base,
 );
@@ -71,6 +72,7 @@ const ticketMessageSchema = new Schema(
     body: { type: String, required: true },
     /** Internal notes are never shown to the member. */
     internal: { type: Boolean, default: false },
+    attachments: [{ _id: false, key: String, name: String, contentType: String, size: Number }],
   },
   base,
 );

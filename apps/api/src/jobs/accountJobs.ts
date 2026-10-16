@@ -1,10 +1,12 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { zipSync, strToU8 } from 'fflate';
 import path from 'node:path';
 import type { AppContext } from '../context';
 import { audit, logTransition } from '../lib/audit';
 import { exportLinkSig } from '../routes/account';
 import { AuthToken, Consent, DataRequest, OtpCode } from '../models/auth';
 import { Session, User } from '../models/core';
+import { Photo } from '../models/profile';
 import { sendNotice } from '../services/notify';
 
 const DAY = 86_400_000;
@@ -65,8 +67,24 @@ export async function buildExport(ctx: AppContext, dataRequestId: string): Promi
     };
 
     await mkdir(ctx.env.EXPORT_DIR, { recursive: true });
-    const key = `${dataRequestId}.json`;
-    await writeFile(path.resolve(ctx.env.EXPORT_DIR, key), JSON.stringify(payload, null, 2), { mode: 0o600 });
+    const json = JSON.stringify(payload, null, 2);
+    await writeFile(path.resolve(ctx.env.EXPORT_DIR, `${dataRequestId}.json`), json, { mode: 0o600 });
+
+    // The download is a zip: the structured data plus the member's own photos (the sanitised full-size copies).
+    const files: Record<string, Uint8Array> = { 'data.json': strToU8(json) };
+    let n = 0;
+    for (const ph of await Photo.find({ userId, status: { $in: ['pending', 'approved'] } }).sort({ order: 1 }).lean()) {
+      const k = ph.variants?.lg ?? ph.variants?.md;
+      if (!k) continue;
+      try {
+        files[`photos/photo-${++n}.jpg`] = new Uint8Array(await ctx.storage.get('photos', k));
+      } catch (err) {
+        ctx.log.warn({ err, photoId: String(ph._id) }, 'photo missing from export');
+      }
+    }
+    const key = `${dataRequestId}.zip`;
+    // Images are already compressed, so store them as they are.
+    await writeFile(path.resolve(ctx.env.EXPORT_DIR, key), zipSync(files, { level: 0 }), { mode: 0o600 });
 
     const expiresAt = new Date(Date.now() + 7 * DAY);
     await DataRequest.updateOne(
@@ -116,7 +134,8 @@ export async function purgeDueAccounts(ctx: AppContext, now: Date = new Date()):
 
       const exports = await DataRequest.find({ userId: id, kind: 'export', resultKey: { $exists: true } }).lean();
       for (const e of exports) {
-        await rm(path.resolve(ctx.env.EXPORT_DIR, path.basename(String(e.resultKey))), { force: true });
+        const base = path.basename(String(e.resultKey)).replace(/\.(zip|json)$/, '');
+        for (const ext of ['zip', 'json']) await rm(path.resolve(ctx.env.EXPORT_DIR, `${base}.${ext}`), { force: true });
       }
       await Promise.all([
         Session.deleteMany({ userId: id }),

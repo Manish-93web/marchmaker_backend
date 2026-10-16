@@ -1,10 +1,11 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
+import { strFromU8, unzipSync } from 'fflate';
 import { generateSync } from 'otplib';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
@@ -16,6 +17,7 @@ import { MemoryMailer } from '../src/lib/mailer';
 import { createLogger } from '../src/lib/logger';
 import { MemorySms } from '../src/lib/sms';
 import { Session, User } from '../src/models/core';
+import { Photo } from '../src/models/profile';
 import { DataRequest, LegalDocument, OtpCode } from '../src/models/auth';
 
 let mongod: MongoMemoryServer;
@@ -379,12 +381,35 @@ describe('account lifecycle', () => {
 
     const link = t.mailer.last('asha@example.com')!.text.match(/https?:\/\/\S+download\?exp=\d+&sig=[a-f0-9]+/)![0];
     const url = new URL(link);
-    const ok = await request(t.app).get(`${url.pathname}${url.search}`).expect(200);
-    expect(ok.body.account.email).toBe('asha@example.com');
-    expect(ok.body.account.dateOfBirth).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(JSON.stringify(ok.body)).not.toContain('passwordHash');
+    const ok = await request(t.app)
+      .get(`${url.pathname}${url.search}`)
+      .buffer(true)
+      .parse((res, cb) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (c: Buffer) => chunks.push(c));
+        res.on('end', () => cb(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+    expect(ok.headers['content-type']).toContain('application/zip');
+    const data = JSON.parse(strFromU8(unzipSync(new Uint8Array(ok.body as Buffer))['data.json']!));
+    expect(data.account.email).toBe('asha@example.com');
+    expect(data.account.dateOfBirth).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(JSON.stringify(data)).not.toContain('passwordHash');
 
     await request(t.app).get(`${url.pathname}?exp=${url.searchParams.get('exp')}&sig=deadbeef`).expect(400);
+  });
+
+  it('includes the members own photos in the export zip', async () => {
+    const t = setup();
+    const { agent, csrf } = await registerVerifyLogin(t);
+    const u = await User.findOne({ email: 'asha@example.com' });
+    await t.ctx.storage.put('photos', 'p/lg1.jpg', Buffer.from('jpegbytes'), 'image/jpeg');
+    await Photo.create({ userId: u!._id, key: 'raw/1', status: 'approved', variants: { lg: 'p/lg1.jpg' }, order: 0 });
+    const r = await agent.post('/api/v1/account/export').set('x-csrf-token', csrf).expect(202);
+    await buildExport(t.ctx, r.body.id);
+    const zip = unzipSync(new Uint8Array(readFileSync(path.join(t.env.EXPORT_DIR, `${r.body.id}.zip`))));
+    expect(Object.keys(zip)).toEqual(expect.arrayContaining(['data.json', 'photos/photo-1.jpg']));
+    expect(strFromU8(zip['photos/photo-1.jpg']!)).toBe('jpegbytes');
   });
 
   it('changes password only with the current one and signs out other devices', async () => {

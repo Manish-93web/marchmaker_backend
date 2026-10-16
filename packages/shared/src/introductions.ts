@@ -71,6 +71,8 @@ export const reportSchema = z
     introductionId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
     userId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
     details: z.string().trim().max(2000).optional(),
+    /** Screenshot keys returned by the attachment presign endpoint. */
+    evidence: z.array(z.string().regex(/^attachments\/report\/[a-f\d]{24}\/[\w-]{8,64}\.(png|jpg|webp)$/)).max(3).default([]),
   })
   .refine((v) => v.introductionId || v.userId, { message: 'Say who you are reporting' });
 

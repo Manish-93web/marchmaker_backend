@@ -13,6 +13,9 @@ import { conflict, notFound } from '../lib/errors';
 import { User } from '../models/core';
 import { InvoiceCounter } from '../models/billing';
 import { CannedReply, Ticket, TicketMessage } from '../models/safety';
+import { Report } from '../models/social';
+import { reportDueAt } from '@marchmaker/shared';
+import * as attachments from './attachments';
 import { sendNotice } from './notify';
 
 interface Actor {
@@ -53,7 +56,7 @@ const presentTicket = (t: {
 });
 
 export async function create(
-  _ctx: AppContext,
+  ctx: AppContext,
   input: {
     userId?: string;
     email: string;
@@ -62,9 +65,11 @@ export async function create(
     subject: string;
     body: string;
     priority?: TicketPriority;
+    attachments?: string[];
   },
 ) {
   const now = new Date();
+  const files = input.userId && input.attachments?.length ? await attachments.confirm(ctx, input.userId, 'ticket', input.attachments) : [];
   const priority = input.priority ?? defaultPriority(input.category);
   const t = await Ticket.create({
     number: await nextNumber(),
@@ -78,7 +83,7 @@ export async function create(
     lastMessageAt: now,
     lastMessageBy: 'member',
   });
-  await TicketMessage.create({ ticketId: t._id, author: 'member', authorId: input.userId, body: input.body });
+  await TicketMessage.create({ ticketId: t._id, author: 'member', authorId: input.userId, body: input.body, attachments: files });
   await emit('support.ticket_created', { ticketId: sid(t._id), number: t.number, priority });
   return presentTicket(t);
 }
@@ -90,22 +95,24 @@ export async function listMine(userId: string) {
   return { items: rows.map(presentTicket) };
 }
 
-export async function getMine(userId: string, id: string) {
+export async function getMine(ctx: AppContext, userId: string, id: string) {
   const t = await Ticket.findOne({ _id: id, userId }).lean();
   if (!t) throw notFound();
   const msgs = await TicketMessage.find({ ticketId: t._id, internal: false }).sort({ _id: 1 }).lean();
   return {
     ...presentTicket(t),
-    messages: msgs.map((m) => ({ id: sid(m._id), author: m.author, body: m.body, at: m.createdAt })),
+    rating: t.csat?.rating ?? null,
+    messages: await Promise.all(msgs.map(async (m) => ({ id: sid(m._id), author: m.author, body: m.body, at: m.createdAt, attachments: await attachments.withUrls(ctx, m.attachments as attachments.StoredAttachment[]) }))),
   };
 }
 
-export async function replyMine(userId: string, id: string, body: string) {
+export async function replyMine(ctx: AppContext, userId: string, id: string, body: string, keys: string[] = []) {
   const t = await Ticket.findOne({ _id: id, userId });
   if (!t) throw notFound();
   if (t.status === 'closed') throw conflict('This conversation is closed. Please start a new one.');
-  const m = await TicketMessage.create({ ticketId: t._id, author: 'member', authorId: userId, body });
-  t.status = 'open';
+  const files = keys.length ? await attachments.confirm(ctx, userId, 'ticket', keys) : [];
+  const m = await TicketMessage.create({ ticketId: t._id, author: 'member', authorId: userId, body, attachments: files });
+  t.status = t.firstResponseAt ? 'awaiting_team' : 'open';
   t.lastMessageAt = new Date();
   t.lastMessageBy = 'member';
   t.resolvedAt = undefined;
@@ -119,6 +126,54 @@ export async function closeMine(userId: string, id: string) {
   return { status: 'closed' as const };
 }
 
+/** One rating per ticket, only once the team has finished with it. */
+export async function rateMine(userId: string, id: string, input: { rating: number; comment?: string }) {
+  const r = await Ticket.updateOne({ _id: id, userId, status: { $in: ['resolved', 'closed'] }, 'csat.rating': { $exists: false } }, { $set: { csat: { ...input, at: new Date() } } });
+  if (!r.matchedCount) {
+    const t = await Ticket.findOne({ _id: id, userId }).select('status csat').lean();
+    if (!t) throw notFound();
+    if (t.csat?.rating) throw conflict('You have already rated this conversation');
+    throw conflict('You can rate a conversation once it has been resolved');
+  }
+  return { rated: true };
+}
+
+/** Average rating and counts for the support dashboard. */
+export async function csatSummary(days = 30) {
+  const since = new Date(Date.now() - days * 86_400_000);
+  const rows = await Ticket.aggregate([{ $match: { 'csat.at': { $gte: since } } }, { $group: { _id: null, avg: { $avg: '$csat.rating' }, n: { $sum: 1 } } }]);
+  return { days, responses: rows[0]?.n ?? 0, average: rows[0] ? Math.round(rows[0].avg * 100) / 100 : null };
+}
+
+/** Raises a safety report from a ticket so the moderation workflow (SLA, claim, action) takes over. */
+export async function escalateToModeration(
+  req: Request,
+  id: string,
+  input: { category: (typeof import('@marchmaker/shared'))['REPORT_CATEGORIES'][number]; reportedUserId: string; note: string },
+  actor: Actor,
+) {
+  const t = await Ticket.findById(id);
+  if (!t) throw notFound();
+  if (!t.userId) throw conflict('This ticket is not linked to a member, so it cannot become a report');
+  if (await Report.exists({ sourceTicketId: t._id })) throw conflict('This ticket has already been escalated');
+  const { REPORT_SEVERITY } = await import('@marchmaker/shared');
+  const severity = REPORT_SEVERITY[input.category];
+  const r = await Report.create({
+    reporterId: t.userId,
+    reportedId: input.reportedUserId,
+    category: input.category,
+    severity,
+    details: `From ticket ${t.number}: ${input.note}`,
+    sourceTicketId: t._id,
+    slaDueAt: reportDueAt(severity, new Date()),
+  });
+  await TicketMessage.create({ ticketId: t._id, author: 'system', body: `Escalated to moderation as a ${severity} report.`, internal: true });
+  await audit(req, { action: 'ticket.escalated', actorId: actor.userId, actorRoles: actor.roles, subjectType: 'ticket', subjectId: id, after: { reportId: sid(r._id), severity } });
+  if (severity === 'critical') await emit('safety.critical_report', { reportId: sid(r._id), category: input.category });
+  await emit('report.created', { reportId: sid(r._id), severity });
+  return { reportId: sid(r._id), severity };
+}
+
 // ------------------------------------------------------------------ staff side
 
 export async function listStaff(
@@ -126,7 +181,7 @@ export async function listStaff(
   f: { status?: string; assignee?: string; overdue?: boolean; q?: string; category?: string },
 ) {
   const q: Record<string, unknown> = {};
-  q.status = f.status && f.status !== 'all' ? f.status : { $in: ['open', 'waiting_on_member'] };
+  q.status = f.status && f.status !== 'all' ? f.status : { $in: ['open', 'awaiting_team', 'awaiting_member'] };
   if (f.assignee === 'me') q.assigneeId = actor.userId;
   if (f.assignee === 'unassigned') q.assigneeId = { $exists: false };
   if (f.category) q.category = f.category;
@@ -152,7 +207,7 @@ export async function listStaff(
   };
 }
 
-export async function getStaff(id: string) {
+export async function getStaff(ctx: AppContext, id: string) {
   const t = await Ticket.findById(id).lean();
   if (!t) throw notFound();
   const [msgs, member] = await Promise.all([
@@ -170,14 +225,18 @@ export async function getStaff(id: string) {
     member: member
       ? { id: sid(member._id), name: member.firstName, status: member.status, plan: member.plan?.planCode ?? 'free', journeyState: member.journeyState }
       : null,
-    messages: msgs.map((m) => ({
-      id: sid(m._id),
-      author: m.author,
-      authorId: m.authorId ? sid(m.authorId) : null,
-      body: m.body,
-      internal: m.internal,
-      at: m.createdAt,
-    })),
+    rating: t.csat?.rating ?? null,
+    messages: await Promise.all(
+      msgs.map(async (m) => ({
+        id: sid(m._id),
+        author: m.author,
+        authorId: m.authorId ? sid(m.authorId) : null,
+        body: m.body,
+        internal: m.internal,
+        at: m.createdAt,
+        attachments: await attachments.withUrls(ctx, m.attachments as attachments.StoredAttachment[]),
+      })),
+    ),
   };
 }
 
@@ -186,7 +245,7 @@ export async function replyStaff(ctx: AppContext, req: Request, id: string, body
   if (!t) throw notFound();
   if (t.status === 'closed') throw conflict('This ticket is closed');
   const m = await TicketMessage.create({ ticketId: t._id, author: 'staff', authorId: actor.userId, body });
-  t.status = 'waiting_on_member';
+  t.status = 'awaiting_member';
   t.lastMessageAt = new Date();
   t.lastMessageBy = 'staff';
   if (!t.firstResponseAt) t.firstResponseAt = new Date();
@@ -217,6 +276,7 @@ export async function addNote(req: Request, id: string, body: string, actor: Act
 }
 
 export async function update(
+  ctx: AppContext,
   req: Request,
   id: string,
   patch: { status?: TicketStatus; priority?: TicketPriority; assigneeId?: string | null },
@@ -245,14 +305,14 @@ export async function update(
     subjectId: id,
     after: patch,
   });
-  return getStaff(id);
+  return getStaff(ctx, id);
 }
 
 /** Resolved tickets close after 7 quiet days, tickets waiting on a member after 14. */
 export async function closeStale(now = new Date()) {
   const d = (n: number) => new Date(now.getTime() - n * 86_400_000);
   const a = await Ticket.updateMany({ status: 'resolved', resolvedAt: { $lt: d(7) } }, { $set: { status: 'closed' } });
-  const b = await Ticket.updateMany({ status: 'waiting_on_member', lastMessageAt: { $lt: d(14) } }, { $set: { status: 'closed' } });
+  const b = await Ticket.updateMany({ status: 'awaiting_member', lastMessageAt: { $lt: d(14) } }, { $set: { status: 'closed' } });
   return a.modifiedCount + b.modifiedCount;
 }
 

@@ -103,6 +103,8 @@ const envSchema = z.object({
   /** Alternative to FIELD_ENCRYPTION_KEY: the key encrypted by AWS KMS (base64), unwrapped at start-up. */
   FIELD_ENCRYPTION_KEY_KMS_WRAPPED: z.string().optional(),
   AWS_REGION: z.string().optional(),
+  /** Automated photo checks (face present, explicit content). A human still approves every photo. */
+  IMAGE_MODERATION: z.enum(['none', 'mock', 'rekognition']).default('none'),
   SENTRY_DSN: z.string().url().optional(),
   SENTRY_ENVIRONMENT: z.string().default('development'),
   SENTRY_RELEASE: z.string().optional(),
@@ -132,6 +134,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     }
     if (env.CALLS_PROVIDER === 'exotel' && env.CALLS_WEBHOOK_SECRET.startsWith('dev-only')) {
       throw new Error('Set CALLS_WEBHOOK_SECRET before enabling voice calls');
+    }
+    if (env.IMAGE_MODERATION === 'mock') {
+      throw new Error('Mock image moderation is not allowed in production');
     }
     if (env.WHATSAPP_PROVIDER === 'mock' || env.PUSH_PROVIDER === 'mock') {
       throw new Error('Mock WhatsApp or push providers are not allowed in production');

@@ -9,7 +9,7 @@ import { SuppressingMailer } from './lib/mailer';
 import { EmailSuppression } from './models/messaging';
 import { memoryAttemptLimiter, redisAttemptLimiter, type AttemptLimiter } from './lib/attemptLimiter';
 import { createStorage, type ObjectStorage } from './lib/storage';
-import { NoopModeration, type ImageModeration } from './lib/moderation';
+import { createImageModeration, type ImageModeration } from './lib/moderation';
 import { createTranscriber, type TranscriptionProvider } from './lib/transcription';
 import { createNarrativeRewriter } from './lib/narrativeRewriter';
 import { createKycProvider, CircuitBreaker, type KycProvider } from './lib/kyc';
@@ -78,7 +78,7 @@ export function buildContext(
     mailer: wrapMailer(base),
     crypto: fieldCryptoFromEnv(base.env),
     storage: createStorage(base.env),
-    moderation: new NoopModeration(),
+    moderation: createImageModeration(base.env, base.log),
     transcriber: createTranscriber(base.env),
     narrativeRewriter: createNarrativeRewriter(base.env),
     kyc: createKycProvider(base.env),

@@ -6,7 +6,10 @@ import {
   appealSchema,
   cannedReplySchema,
   caseActionSchema,
+  attachmentPresignSchema,
   ticketCreateSchema,
+  ticketEscalateSchema,
+  ticketRatingSchema,
   ticketReplySchema,
   ticketUpdateSchema,
   type Role,
@@ -17,7 +20,10 @@ import { authedUser, requirePermission } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { User } from '../models/core';
 import * as moderation from '../services/moderation';
+import * as attachmentSvc from '../services/attachments';
 import * as support from '../services/support';
+import { Ticket } from '../models/safety';
+import { streamTicket } from '../services/ticketStream';
 
 export const SUPPORT_PREFIXES = ['/support'];
 
@@ -59,14 +65,14 @@ export function supportRouter(ctx: AppContext): Router {
     '/support/tickets/:id',
     validate({ params: idParams }),
     asyncHandler(async (req, res) => {
-      noStore(res).json(await support.getMine(authedUser(req).userId, String(req.params.id)));
+      noStore(res).json(await support.getMine(ctx, authedUser(req).userId, String(req.params.id)));
     }),
   );
   r.post(
     '/support/tickets/:id/reply',
     validate({ params: idParams, body: ticketReplySchema }),
     asyncHandler(async (req, res) => {
-      res.status(201).json(await support.replyMine(authedUser(req).userId, String(req.params.id), req.body.body));
+      res.status(201).json(await support.replyMine(ctx, authedUser(req).userId, String(req.params.id), req.body.body, req.body.attachments));
     }),
   );
   r.post(
@@ -74,6 +80,33 @@ export function supportRouter(ctx: AppContext): Router {
     validate({ params: idParams }),
     asyncHandler(async (req, res) => {
       res.json(await support.closeMine(authedUser(req).userId, String(req.params.id)));
+    }),
+  );
+  r.post(
+    '/support/tickets/:id/rating',
+    validate({ params: idParams, body: ticketRatingSchema }),
+    asyncHandler(async (req, res) => {
+      res.json(await support.rateMine(authedUser(req).userId, String(req.params.id), req.body));
+    }),
+  );
+  r.post(
+    '/support/attachments/presign',
+    validate({ body: attachmentPresignSchema }),
+    asyncHandler(async (req, res) => {
+      res.json(await attachmentSvc.presign(ctx, authedUser(req).userId, req.body));
+    }),
+  );
+  /** Server-sent events: a member sees the team's reply without refreshing. */
+  r.get(
+    '/support/tickets/:id/stream',
+    validate({ params: idParams }),
+    asyncHandler(async (req, res) => {
+      const t = await Ticket.exists({ _id: String(req.params.id), userId: authedUser(req).userId });
+      if (!t) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'We could not find that', requestId: String(req.id) } });
+        return;
+      }
+      await streamTicket(req, res, String(req.params.id), authedUser(req).userId);
     }),
   );
   r.get(
@@ -192,7 +225,7 @@ export function adminSafetyRouter(ctx: AppContext): Router {
     requirePermission('support.view'),
     validate({ params: idParams }),
     asyncHandler(async (req, res) => {
-      noStore(res).json(await support.getStaff(String(req.params.id)));
+      noStore(res).json(await support.getStaff(ctx, String(req.params.id)));
     }),
   );
   r.post(
@@ -216,7 +249,22 @@ export function adminSafetyRouter(ctx: AppContext): Router {
     requirePermission('support.reply'),
     validate({ params: idParams, body: ticketUpdateSchema }),
     asyncHandler(async (req, res) => {
-      res.json(await support.update(req, String(req.params.id), req.body, actorOf(req)));
+      res.json(await support.update(ctx, req, String(req.params.id), req.body, actorOf(req)));
+    }),
+  );
+  r.post(
+    '/support/tickets/:id/escalate',
+    requirePermission('moderation.act'),
+    validate({ params: idParams, body: ticketEscalateSchema }),
+    asyncHandler(async (req, res) => {
+      res.status(201).json(await support.escalateToModeration(req, String(req.params.id), req.body, actorOf(req)));
+    }),
+  );
+  r.get(
+    '/support/csat',
+    requirePermission('support.view'),
+    asyncHandler(async (_req, res) => {
+      noStore(res).json(await support.csatSummary());
     }),
   );
   r.get(

@@ -81,6 +81,8 @@ const reportSchema = new Schema(
     slaAlertedAt: Date,
     /** Set when staff raise the report from a support ticket. */
     sourceTicketId: Schema.Types.ObjectId,
+    /** Reporter screenshots, private in the documents bucket. */
+    evidence: [{ _id: false, key: String, name: String, contentType: String, size: Number }],
     resolution: { action: String, reason: String, by: Schema.Types.ObjectId, at: Date },
   },
   base,

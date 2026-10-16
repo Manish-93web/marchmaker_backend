@@ -6,6 +6,8 @@ import { AppError, notFound } from '../lib/errors';
 import { Block, Introduction } from '../models/matching';
 import { Message, MessageThread, Report } from '../models/social';
 import * as credits from './credits';
+import type { AppContext } from '../context';
+import * as attachments from './attachments';
 
 const sid = (v: unknown) => String(v);
 const OPEN = ['released', 'viewed', 'accepted_by_one'];
@@ -61,11 +63,13 @@ export async function listBlocks(me: string) {
 }
 
 export async function report(
+  ctx: AppContext,
   me: string,
-  input: { category: ReportCategory; userId?: string; introductionId?: string; details?: string },
+  input: { category: ReportCategory; userId?: string; introductionId?: string; details?: string; evidence?: string[] },
 ) {
   const { targetId, introId } = await resolveTarget(me, input);
   const severity = REPORT_SEVERITY[input.category];
+  const evidence = input.evidence?.length ? await attachments.confirm(ctx, me, 'report', input.evidence) : [];
 
   // Keep a frozen copy of the recent conversation as evidence.
   let transcript: { at: Date; senderId: string; body: string }[] = [];
@@ -84,6 +88,7 @@ export async function report(
     severity,
     details: input.details,
     transcript,
+    evidence,
     slaDueAt: reportDueAt(severity, new Date()),
   });
   await audit(undefined, {

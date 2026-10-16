@@ -274,7 +274,7 @@ describe('support tickets', () => {
     await agent.post(`/admin/support/tickets/${created.id}/reply`).send({ body: 'Sorry about that. We have refunded the second charge.' }).expect(201);
 
     const mine = (await m.get(`/support/tickets/${created.id}`).expect(200)).body;
-    expect(mine.status).toBe('waiting_on_member');
+    expect(mine.status).toBe('awaiting_member');
     expect(mine.messages.map((x: { body: string }) => x.body)).toEqual([
       'I was charged twice for my plan this month.',
       'Sorry about that. We have refunded the second charge.',
@@ -286,7 +286,7 @@ describe('support tickets', () => {
     expect(ev).toBeTruthy();
 
     await m.post(`/support/tickets/${created.id}/reply`).send({ body: 'Thank you!' }).expect(201);
-    expect((await Ticket.findById(created.id).lean())!.status).toBe('open');
+    expect((await Ticket.findById(created.id).lean())!.status).toBe('awaiting_team');
   });
 
   it('keeps one member out of another member ticket', async () => {
@@ -332,5 +332,76 @@ describe('support tickets', () => {
     await m.get('/admin/support/tickets').expect(403);
     const mod = await staffSession(t, 'Mod', 'moderator');
     await mod.get('/admin/support/tickets').expect(403);
+  });
+});
+
+describe('support attachments, ratings and escalation', () => {
+  const png = Buffer.from('89504e470d0a1a0a', 'hex');
+
+  async function upload(t: T, m: Awaited<ReturnType<typeof memberSession>>, scope: 'ticket' | 'report') {
+    const p = (await m.post('/support/attachments/presign').send({ scope, contentType: 'image/png', size: png.length, name: 'shot.png' }).expect(200)).body;
+    await t.ctx.storage.put('documents', p.key, png, 'image/png');
+    return p.key as string;
+  }
+
+  it('attaches a screenshot to a ticket and shows it to staff with a short-lived link', async () => {
+    const t = setup();
+    const agent = await staffSession(t, 'Sam', 'support_agent');
+    const m = await memberSession(t, await user(t, 'Meera'));
+    const key = await upload(t, m, 'ticket');
+    const created = (await m.post('/support/tickets').send({ category: 'billing', subject: 'Wrong amount', body: 'See the attached screenshot please.', attachments: [key] }).expect(201)).body;
+    const view = (await agent.get(`/admin/support/tickets/${created.id}`).expect(200)).body;
+    expect(view.messages[0].attachments[0].url).toContain('ttl=300');
+  });
+
+  it('refuses an attachment key that belongs to someone else or was never uploaded', async () => {
+    const t = setup();
+    const a = await memberSession(t, await user(t, 'Asha'));
+    const b = await memberSession(t, await user(t, 'Bela'));
+    const key = await upload(t, a, 'ticket');
+    await b.post('/support/tickets').send({ category: 'account', subject: 'Not mine', body: 'Trying to reuse a key.', attachments: [key] }).expect(422);
+    const ghost = (await b.post('/support/attachments/presign').send({ scope: 'ticket', contentType: 'image/png', size: 10, name: 'x.png' }).expect(200)).body.key;
+    await b.post('/support/tickets').send({ category: 'account', subject: 'Never uploaded', body: 'The file is missing.', attachments: [ghost] }).expect(422);
+  });
+
+  it('collects one rating after resolution and summarises it', async () => {
+    const t = setup();
+    const agent = await staffSession(t, 'Sam', 'support_agent');
+    const m = await memberSession(t, await user(t, 'Meera'));
+    const created = (await m.post('/support/tickets').send({ category: 'account', subject: 'Change my name', body: 'Please update my first name.' }).expect(201)).body;
+    await m.post(`/support/tickets/${created.id}/rating`).send({ rating: 5 }).expect(409);
+    await agent.patch(`/admin/support/tickets/${created.id}`).send({ status: 'resolved' }).expect(200);
+    await m.post(`/support/tickets/${created.id}/rating`).send({ rating: 4, comment: 'Quick help' }).expect(200);
+    await m.post(`/support/tickets/${created.id}/rating`).send({ rating: 1 }).expect(409);
+    expect((await agent.get('/admin/support/csat').expect(200)).body).toMatchObject({ responses: 1, average: 4 });
+  });
+
+  it('turns a ticket into a moderation report once', async () => {
+    const t = setup();
+    const mod = await staffSession(t, 'Mod', 'moderator');
+    const agent = await staffSession(t, 'Sam', 'support_agent');
+    const m = await memberSession(t, await user(t, 'Meera'));
+    const target = await user(t, 'Rohan');
+    const created = (await m.post('/support/tickets').send({ category: 'safety', subject: 'Threatening messages', body: 'He threatened me on the chat.' }).expect(201)).body;
+    const body = { category: 'safety_threat', reportedUserId: target.id, note: 'Member described threats' };
+    await agent.post(`/admin/support/tickets/${created.id}/escalate`).send(body).expect(403);
+    const r = (await mod.post(`/admin/support/tickets/${created.id}/escalate`).send(body).expect(201)).body;
+    expect(r.severity).toBe('critical');
+    await mod.post(`/admin/support/tickets/${created.id}/escalate`).send(body).expect(409);
+    expect((await Report.findById(r.reportId).lean())?.sourceTicketId?.toString()).toBe(created.id);
+  });
+
+  it('stores report evidence privately and only lets reviewers with message access see it', async () => {
+    const t = setup();
+    const m = await memberSession(t, await user(t, 'Meera'));
+    const target = await user(t, 'Rohan');
+    const key = await upload(t, m, 'report');
+    const rep = (await m.post('/reports').send({ category: 'harassment', userId: target.id, evidence: [key] }).expect(201)).body;
+    const full = await staffSession(t, 'Mod', 'moderator');
+    const seen = (await full.get(`/admin/moderation/${rep.id}`).expect(200)).body;
+    expect(seen.evidence).toHaveLength(1);
+    expect(await AuditLog.countDocuments({ action: 'report.evidence_viewed' })).toBe(1);
+    const other = await staffSession(t, 'Sam', 'support_agent');
+    await other.get(`/admin/moderation/${rep.id}`).expect(403);
   });
 });
