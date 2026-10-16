@@ -5,12 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsup src/server.ts --format esm --clean",
+    "build": "tsup src/server.ts src/scripts/syncIndexes.ts --format esm --clean",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test --ext .ts",
     "test": "vitest run",
-    "seed": "tsx src/scripts/seed.ts"
+    "seed": "tsx src/scripts/seed.ts",
+    "seed:demo": "tsx src/scripts/seedDemo.ts",
+    "migrate:up": "migrate-mongo up -f migrate-mongo-config.cjs",
+    "migrate:down": "migrate-mongo down -f migrate-mongo-config.cjs",
+    "migrate:status": "migrate-mongo status -f migrate-mongo-config.cjs",
+    "sync-indexes": "tsx src/scripts/syncIndexes.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",
@@ -35,6 +40,7 @@
     "hpp": "^0.2.3",
     "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
+    "migrate-mongo": "^14.0.7",
     "mongoose": "^9.11.2",
     "nodemailer": "^10.1.1",
     "opossum": "^10.0.0",
