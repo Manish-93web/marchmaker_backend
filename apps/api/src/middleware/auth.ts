@@ -4,6 +4,7 @@ import type { AppContext } from '../context';
 import { AppError, forbidden, unauthorized } from '../lib/errors';
 import { safeEqual } from '../lib/secrets';
 import { Session, User } from '../models/core';
+import { tag } from '../lib/routeIntrospect';
 import { verifyAccess } from '../services/sessions';
 import type { IssuedTokens } from '../services/sessions';
 
@@ -140,7 +141,7 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
 
 /** Staff endpoints: needs the permission AND a session that passed TOTP. */
 export function requirePermission(...perms: Permission[]): RequestHandler {
-  return (req, _res, next) => {
+  return tag((req, _res, next) => {
     const a: AuthInfo | undefined = req.auth;
     if (!a) return next(unauthorized());
     if (!a.mfa) {
@@ -148,7 +149,7 @@ export function requirePermission(...perms: Permission[]): RequestHandler {
     }
     if (!perms.every((p) => a.permissions.includes(p))) return next(forbidden());
     next();
-  };
+  }, { permissions: perms });
 }
 
 /** Passes when the caller holds at least one of the permissions (for example view_basic or view_full). */

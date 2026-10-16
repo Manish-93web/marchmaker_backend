@@ -1,5 +1,6 @@
 import type { RequestHandler } from 'express';
 import type { ZodTypeAny, z } from 'zod';
+import { tag } from '../lib/routeIntrospect';
 
 interface Schemas {
   body?: ZodTypeAny;
@@ -9,7 +10,7 @@ interface Schemas {
 
 /** Validates and replaces req.body / req.query / req.params with parsed values. */
 export function validate(schemas: Schemas): RequestHandler {
-  return (req, _res, next) => {
+  return tag((req, _res, next) => {
     try {
       if (schemas.body) req.body = schemas.body.parse(req.body);
       if (schemas.query) Object.defineProperty(req, 'query', { value: schemas.query.parse(req.query), writable: true });
@@ -18,7 +19,7 @@ export function validate(schemas: Schemas): RequestHandler {
     } catch (err) {
       next(err);
     }
-  };
+  }, schemas);
 }
 
 export type Infer<T extends ZodTypeAny> = z.infer<T>;

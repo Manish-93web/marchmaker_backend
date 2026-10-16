@@ -65,6 +65,20 @@ describe('openapi', () => {
     expect(Object.keys(res.body.paths)).toContain('/api/v1/auth/login');
     expect(Object.keys(res.body.paths)).toContain('/api/v1/account/export');
   });
+
+  it('is generated from the mounted routes, with schemas and required permissions', async () => {
+    const res = await request(build()).get('/api/docs/openapi.json');
+    const paths = res.body.paths as Record<string, Record<string, { description?: string; requestBody?: unknown; parameters?: unknown[]; security?: unknown[] }>>;
+    // Endpoints added long after the hand-written list are still there.
+    for (const p of ['/api/v1/admin/jobs', '/api/v1/admin/legal', '/api/v1/faqs', '/api/v1/billing/subscriptions/pause', '/api/v1/support/tickets/{id}/rating']) {
+      expect(Object.keys(paths), p).toContain(p);
+    }
+    expect(Object.keys(paths).length).toBeGreaterThan(200);
+    expect(paths['/api/v1/admin/legal']!.post!.description).toContain('legal.manage');
+    expect(paths['/api/v1/admin/legal']!.post!.requestBody).toBeTruthy();
+    expect(paths['/api/v1/admin/legal']!.post!.security).toHaveLength(2);
+    expect(paths['/api/v1/billing/subscriptions']).toBeTruthy(); // alias path
+  });
 });
 
 describe('field encryption', () => {

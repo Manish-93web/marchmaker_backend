@@ -42,6 +42,9 @@ export interface PaymentProvider {
   getSubscription(id: string): Promise<ProviderSubscription>;
   updateSubscription(id: string, i: { planId: string; when: 'now' | 'cycle_end' }): Promise<ProviderSubscription>;
   cancelSubscription(id: string, atCycleEnd: boolean): Promise<ProviderSubscription>;
+  /** Stops charging from now; the member keeps what they already paid for. */
+  pauseSubscription(id: string): Promise<ProviderSubscription>;
+  resumeSubscription(id: string): Promise<ProviderSubscription>;
   fetchOrderPayments(orderId: string): Promise<ProviderPayment[]>;
   refund(paymentId: string, amountPaise: number): Promise<{ id: string; status: string }>;
   /** Webhook: valid signature gives the parsed event, otherwise null. */
@@ -136,6 +139,18 @@ export class MockPaymentProvider implements PaymentProvider {
     this.guard();
     const s = await this.getSubscription(id);
     if (!atCycleEnd) s.status = 'cancelled';
+    return s;
+  }
+  async pauseSubscription(id: string) {
+    this.guard();
+    const s = await this.getSubscription(id);
+    s.status = 'paused';
+    return s;
+  }
+  async resumeSubscription(id: string) {
+    this.guard();
+    const s = await this.getSubscription(id);
+    s.status = 'active';
     return s;
   }
   async fetchOrderPayments(orderId: string) {
@@ -272,6 +287,12 @@ export class RazorpayProvider implements PaymentProvider {
   }
   async cancelSubscription(id: string, atCycleEnd: boolean) {
     return this.toSub(await this.call('POST', `/subscriptions/${id}/cancel`, { cancel_at_cycle_end: atCycleEnd ? 1 : 0 }));
+  }
+  async pauseSubscription(id: string) {
+    return this.toSub(await this.call('POST', `/subscriptions/${id}/pause`, { pause_at: 'now' }));
+  }
+  async resumeSubscription(id: string) {
+    return this.toSub(await this.call('POST', `/subscriptions/${id}/resume`, { resume_at: 'now' }));
   }
   async fetchOrderPayments(orderId: string) {
     const r = await this.call<{ items: { id: string; order_id?: string; status: string; amount: number; method?: string; card_id?: string; vpa?: string }[] }>(

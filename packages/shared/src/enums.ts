@@ -56,6 +56,7 @@ export const SUBSCRIPTION_STATES = [
   'active',
   'pending',
   'halted',
+  'paused',
   'cancelled',
   'completed',
   'expired',

@@ -58,8 +58,9 @@ export function createApp({ env, log, isReady, ctx: given }: AppDeps): Express {
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 
   // OpenAPI is not served in production.
-  if (env.NODE_ENV !== 'production') app.use('/api/docs', docsRouter());
-  app.use(API_PREFIX, v1Router(ctx));
+  const v1 = v1Router(ctx);
+  if (env.NODE_ENV !== 'production') app.use('/api/docs', docsRouter(() => v1));
+  app.use(API_PREFIX, v1);
 
   app.use(notFoundHandler);
   app.use(errorHandler(log, env.NODE_ENV === 'production'));

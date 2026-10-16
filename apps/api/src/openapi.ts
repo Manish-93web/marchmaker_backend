@@ -1,5 +1,6 @@
 import { OpenApiGeneratorV31, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { Router } from 'express';
+import { collectRoutes } from './lib/routeIntrospect';
 import { z } from 'zod';
 import {
   billingProfileSchema,
@@ -31,9 +32,6 @@ import {
   API_PREFIX,
 } from '@marchmaker/shared';
 
-const registry = new OpenAPIRegistry();
-registry.registerComponent('securitySchemes', 'cookieAuth', { type: 'apiKey', in: 'cookie', name: 'mm_at' });
-registry.registerComponent('securitySchemes', 'bearerAuth', { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' });
 
 const Err = { description: 'Error', content: { 'application/json': { schema: apiErrorSchema } } };
 const Ok = (description = 'OK') => ({ description, content: { 'application/json': { schema: z.object({}).loose() } } });
@@ -166,37 +164,109 @@ const routes: Route[] = [
   { method: 'post', path: '/webhooks/razorpay', summary: 'Payment provider webhook (signature verified)', tag: 'Billing' },
 ];
 
-for (const r of routes) {
-  registry.registerPath({
+const responses = (status: number) => ({
+  [status]: status === 204 ? { description: 'No content' } : Ok(),
+  400: Err,
+  401: Err,
+  422: Err,
+  429: Err,
+});
+
+/** Adds a route to a registry. Schemas the generator cannot express are dropped, never the route. */
+function register(reg: OpenAPIRegistry, r: Route & { query?: z.ZodType; params?: z.ZodType; permissions?: readonly string[] }) {
+  const base = {
     method: r.method,
     path: `${API_PREFIX}${r.path}`,
     summary: r.summary,
     tags: [r.tag],
-    security: r.auth ? [{ cookieAuth: [] }, { bearerAuth: [] }] : [],
-    request: r.body ? { body: { content: { 'application/json': { schema: r.body } } } } : undefined,
-    responses: {
-      [r.status ?? 200]: r.status === 204 ? { description: 'No content' } : Ok(),
-      400: Err,
-      401: Err,
-      422: Err,
-      429: Err,
-    },
-  });
+    security: (r.auth ? [{ cookieAuth: [] }, { bearerAuth: [] }] : []) as Record<string, string[]>[],
+    ...(r.permissions?.length ? { description: `Requires permission: ${r.permissions.join(', ')} (and a two-factor session).` } : {}),
+    responses: responses(r.status ?? 200),
+  };
+  const asObject = (v?: z.ZodType) => (v && 'shape' in (v as object) ? (v as z.ZodObject) : undefined);
+  const request = {
+    ...(r.body ? { body: { content: { 'application/json': { schema: r.body } } } } : {}),
+    ...(asObject(r.query) ? { query: asObject(r.query) } : {}),
+    ...(asObject(r.params) ? { params: asObject(r.params) } : {}),
+  };
+  const attempt = (withRequest: boolean) => {
+    const probe = new OpenAPIRegistry();
+    const def = { ...base, ...(withRequest && Object.keys(request).length ? { request } : {}) };
+    probe.registerPath(def);
+    new OpenApiGeneratorV31(probe.definitions).generateDocument({ openapi: '3.1.0', info: { title: 'p', version: '1' } });
+    reg.registerPath(def);
+  };
+  try {
+    attempt(true);
+  } catch {
+    attempt(false);
+  }
 }
 
-export function buildOpenApiDocument() {
-  return new OpenApiGeneratorV31(registry.definitions).generateDocument({
+const TAGS: Record<string, string> = {
+  admin: 'Admin',
+  auth: 'Auth',
+  account: 'Account',
+  billing: 'Billing',
+  support: 'Support',
+  legal: 'Legal',
+  verification: 'Verification',
+};
+const tagFor = (path: string) => {
+  const seg = path.split('/').filter(Boolean)[0] ?? 'misc';
+  return TAGS[seg] ?? seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' ');
+};
+
+/**
+ * The document is built from the Express router itself: every route that is mounted appears, with the
+ * body, query and params schemas that validate() enforces and the permission it requires. The hand-written
+ * list above only supplies nicer summaries, so a new endpoint can never be missing from the docs.
+ */
+export function buildOpenApiDocument(v1?: Router) {
+  const reg = new OpenAPIRegistry();
+  reg.registerComponent('securitySchemes', 'cookieAuth', { type: 'apiKey', in: 'cookie', name: 'mm_at' });
+  reg.registerComponent('securitySchemes', 'bearerAuth', { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' });
+  const seen = new Set<string>();
+  const key = (m: string, p: string) => `${m} ${p}`;
+  const found = v1 ? collectRoutes(v1) : [];
+  const hand = new Map(routes.map((r) => [key(r.method, r.path), r]));
+
+  for (const f of found) {
+    if (!['get', 'post', 'put', 'patch', 'delete'].includes(f.method)) continue;
+    const k = key(f.method, f.path);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const h = hand.get(k);
+    const staff = f.path.startsWith('/admin') || (f.meta.permissions?.length ?? 0) > 0;
+    register(reg, {
+      method: f.method as Route['method'],
+      path: f.path,
+      summary: h?.summary ?? `${f.method.toUpperCase()} ${f.path}`,
+      tag: h?.tag ?? tagFor(f.path),
+      auth: h?.auth ?? staff,
+      status: h?.status ?? (f.method === 'post' ? 201 : 200),
+      body: f.meta.body ?? h?.body,
+      query: f.meta.query,
+      params: f.meta.params,
+      permissions: f.meta.permissions,
+    });
+  }
+  // Hand-listed routes that are mounted outside the v1 router (webhooks) or not discovered.
+  for (const r of routes) {
+    if (!seen.has(key(r.method, r.path))) register(reg, r);
+  }
+  return new OpenApiGeneratorV31(reg.definitions).generateDocument({
     openapi: '3.1.0',
     info: { title: 'Marchmaker API', version: '1.0.0', description: 'Intent-to-marry introductions platform' },
     servers: [{ url: '/' }],
   });
 }
 
-export function docsRouter(): Router {
+export function docsRouter(v1?: () => Router): Router {
   const r = Router();
   let cached: ReturnType<typeof buildOpenApiDocument> | undefined;
   r.get('/openapi.json', (_req, res) => {
-    cached ??= buildOpenApiDocument();
+    cached ??= buildOpenApiDocument(v1?.());
     res.json(cached);
   });
   return r;

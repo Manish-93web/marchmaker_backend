@@ -31,7 +31,7 @@ import * as wallet from './wallet';
 const MONTHS: Record<BillingInterval, number> = { monthly: 1, quarterly: 3, annual: 12 };
 const TOTAL_COUNT: Record<BillingInterval, number> = { monthly: 120, quarterly: 40, annual: 10 };
 const TERMINAL: SubscriptionState[] = ['cancelled', 'completed', 'expired'];
-const LIVE: SubscriptionState[] = ['created', 'authenticated', 'active', 'pending', 'halted'];
+const LIVE: SubscriptionState[] = ['created', 'authenticated', 'active', 'pending', 'halted', 'paused'];
 
 const addMonths = (d: Date, n: number) => {
   const x = new Date(d);
@@ -470,16 +470,22 @@ export async function applySubscriptionState(se: SubEntity): Promise<void> {
   if (next === 'halted') {
     set.graceUntil = addDays(new Date(), GRACE_DAYS);
     userSet['plan.status'] = 'grace';
+  } else if (next === 'paused') {
+    // Billing stops now; access carries on until the period already paid for ends (see lapseAccess).
+    userSet['plan.status'] = 'paused';
   } else if (next === 'active') {
     unset.graceUntil = 1;
     userSet['plan.status'] = 'active';
+    userSet['plan.planCode'] = sub.planCode;
   } else if (TERMINAL.includes(next)) {
     userSet['plan.status'] = 'cancelled';
     set.cancelAtPeriodEnd = false;
   }
   await Subscription.updateOne({ _id: sub._id, status: sub.status }, { $set: set, ...(Object.keys(unset).length && { $unset: unset }) });
   if (Object.keys(userSet).length) {
-    await User.updateOne({ _id: sub.userId, 'plan.planCode': sub.planCode as PlanCode }, { $set: userSet });
+    // Resuming may follow a lapse to the free plan, so the plan check is skipped for that one transition.
+    const resuming = next === 'active' && sub.status === 'paused';
+    await User.updateOne(resuming ? { _id: sub.userId } : { _id: sub.userId, 'plan.planCode': sub.planCode as PlanCode }, { $set: userSet });
   }
   if (next === 'halted' && sub.status !== 'halted') {
     await Outbox.create({
@@ -757,7 +763,7 @@ export async function lapseAccess(now = new Date()) {
   const due = await Subscription.find({
     $or: [
       { status: 'halted', graceUntil: { $lte: now } },
-      { status: { $in: TERMINAL }, currentPeriodEnd: { $lte: now } },
+      { status: { $in: [...TERMINAL, 'paused'] }, currentPeriodEnd: { $lte: now } },
     ],
   }).limit(500);
   for (const s of due) {
@@ -829,6 +835,22 @@ export async function cancelAtPeriodEnd(ctx: AppContext, userId: string) {
   sub.cancelAtPeriodEnd = true;
   await sub.save();
   return { endsAt: sub.currentPeriodEnd ?? null };
+}
+
+/** Pause billing (for example while travelling or in a break). Access runs to the end of the paid period. */
+export async function pauseSubscription(ctx: AppContext, userId: string) {
+  const sub = await liveSub(userId);
+  const next = await needProvider(ctx).pauseSubscription(sub.razorpaySubscriptionId);
+  await applySubscriptionState({ id: next.id, status: next.status, plan_id: next.planId, current_end: next.currentEnd, current_start: next.currentStart });
+  return { status: 'paused' as const, accessUntil: sub.currentPeriodEnd ?? null };
+}
+
+export async function resumeSubscription(ctx: AppContext, userId: string) {
+  const sub = await Subscription.findOne({ userId, status: 'paused' }).sort({ createdAt: -1 });
+  if (!sub) throw new AppError(409, 'NOT_PAUSED', 'Your subscription is not paused');
+  const next = await needProvider(ctx).resumeSubscription(sub.razorpaySubscriptionId);
+  await applySubscriptionState({ id: next.id, status: next.status, plan_id: next.planId, current_end: next.currentEnd, current_start: next.currentStart });
+  return { status: 'active' as const };
 }
 
 /** The provider-hosted page where the member can update their card or UPI mandate. */

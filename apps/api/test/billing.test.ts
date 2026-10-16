@@ -355,6 +355,33 @@ describe('subscriptions', () => {
     await m.post('/billing/change-plan').send({ planCode: 'essential', interval: 'monthly' }).expect(200);
   });
 
+  it('pauses billing but keeps access to the end of the paid period, then resumes', async () => {
+    const t = setup();
+    const m = await member(t);
+    const { entity, id } = await activeSubscription(t, m);
+    await send(t, 'subscription.charged', { subscription: entity, payment: t.mock.paymentEntity({ id: 'pay_p', subscriptionId: id, amount: 99_900 }) }).expect(200);
+    const r = (await m.post('/billing/subscriptions/pause').send({}).expect(200)).body;
+    expect(r.status).toBe('paused');
+    expect((await User.findById(m.id).lean())!.plan).toMatchObject({ planCode: 'essential', status: 'paused' });
+    await m.post('/billing/subscriptions/pause').send({}).expect(409); // already paused
+
+    // Once the paid period ends the plan drops to free, and resuming restores it.
+    await lapseAccess(new Date(Date.now() + 40 * 86_400_000));
+    expect((await User.findById(m.id).lean())!.plan!.planCode).toBe('free');
+    await m.post('/billing/subscriptions/resume').send({}).expect(200);
+    expect((await User.findById(m.id).lean())!.plan).toMatchObject({ planCode: 'essential', status: 'active' });
+    await m.post('/billing/subscriptions/resume').send({}).expect(409);
+  });
+
+  it('answers on the spec-named endpoints as well as the original ones', async () => {
+    const t = setup();
+    const m = await member(t);
+    expect((await m.get('/billing/summary').expect(200)).body).toEqual((await m.get('/billing').expect(200)).body);
+    await m.post('/billing/coupons/validate').send({ code: 'NOPE', target: 'pack_1' }).expect(422);
+    expect((await m.post('/billing/orders').send({ packCode: 'pack_1' }).expect(201)).body.orderId).toBeTruthy();
+    expect((await m.post('/billing/subscriptions').send({ planCode: 'essential', interval: 'monthly' }).expect(201)).body.subscriptionId).toBeTruthy();
+  });
+
   it('cancels at period end and keeps access until then', async () => {
     const t = setup();
     const m = await member(t);

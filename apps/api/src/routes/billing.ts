@@ -45,7 +45,7 @@ export function billingRouter(ctx: AppContext): Router {
   const noStore = (res: express.Response) => res.set('Cache-Control', 'no-store');
 
   r.get(
-    '/billing',
+    ['/billing', '/billing/summary'],
     asyncHandler(async (req, res) => {
       noStore(res).json(await billing.summary(ctx, authedUser(req).userId));
     }),
@@ -83,21 +83,21 @@ export function billingRouter(ctx: AppContext): Router {
     }),
   );
   r.post(
-    '/billing/coupon/check',
+    ['/billing/coupon/check', '/billing/coupons/validate'],
     validate({ body: couponCheckSchema }),
     asyncHandler(async (req, res) => {
       res.json(await billing.checkCoupon(authedUser(req).userId, req.body.code, req.body.target));
     }),
   );
   r.post(
-    '/billing/subscribe',
+    ['/billing/subscribe', '/billing/subscriptions'],
     validate({ body: subscribeSchema }),
     asyncHandler(async (req, res) => {
       res.status(201).json(await billing.startSubscription(ctx, authedUser(req).userId, req.body));
     }),
   );
   r.post(
-    '/billing/packs/order',
+    ['/billing/packs/order', '/billing/orders'],
     validate({ body: packOrderSchema }),
     asyncHandler(async (req, res) => {
       res.status(201).json(await billing.startPackOrder(ctx, authedUser(req).userId, req.body));
@@ -111,16 +111,28 @@ export function billingRouter(ctx: AppContext): Router {
     }),
   );
   r.post(
-    '/billing/change-plan',
+    ['/billing/change-plan', '/billing/subscriptions/change'],
     validate({ body: changePlanSchema }),
     asyncHandler(async (req, res) => {
       res.json(await billing.changePlan(ctx, authedUser(req).userId, req.body));
     }),
   );
   r.post(
-    '/billing/cancel',
+    ['/billing/cancel', '/billing/subscriptions/cancel'],
     asyncHandler(async (req, res) => {
       res.json(await billing.cancelAtPeriodEnd(ctx, authedUser(req).userId));
+    }),
+  );
+  r.post(
+    '/billing/subscriptions/pause',
+    asyncHandler(async (req, res) => {
+      res.json(await billing.pauseSubscription(ctx, authedUser(req).userId));
+    }),
+  );
+  r.post(
+    '/billing/subscriptions/resume',
+    asyncHandler(async (req, res) => {
+      res.json(await billing.resumeSubscription(ctx, authedUser(req).userId));
     }),
   );
   r.get(
