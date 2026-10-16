@@ -15,7 +15,8 @@
     "migrate:up": "migrate-mongo up -f migrate-mongo-config.cjs",
     "migrate:down": "migrate-mongo down -f migrate-mongo-config.cjs",
     "migrate:status": "migrate-mongo status -f migrate-mongo-config.cjs",
-    "sync-indexes": "tsx src/scripts/syncIndexes.ts"
+    "sync-indexes": "tsx src/scripts/syncIndexes.ts",
+    "docs:notifications": "tsx src/scripts/notificationMatrix.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",
