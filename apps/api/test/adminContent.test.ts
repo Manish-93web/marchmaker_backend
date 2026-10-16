@@ -82,6 +82,7 @@ async function session(t: T, roles: Role[] = ['member']) {
     get: (url: string) => agent.get(`/api/v1${url}`),
     post: (url: string) => agent.post(`/api/v1${url}`).set('x-csrf-token', csrf),
     put: (url: string) => agent.put(`/api/v1${url}`).set('x-csrf-token', csrf),
+    patch: (url: string) => agent.patch(`/api/v1${url}`).set('x-csrf-token', csrf),
     delete: (url: string) => agent.delete(`/api/v1${url}`).set('x-csrf-token', csrf),
   };
 }
@@ -193,5 +194,17 @@ describe('spec-named aliases', () => {
     await m.put('/astrology/profile').send({}).expect(404); // behind its feature flag, like /astrology/details
     await request(t.app).get('/api/v1/wallet/ledger').expect(401);
     await request(t.app).post('/api/v1/push/subscribe').send({}).expect(401);
+  });
+});
+
+describe('theme on the account and remaining aliases', () => {
+  it('keeps the theme with the member, and accepts feedback under the introduction', async () => {
+    const t = setup();
+    const m = await session(t);
+    await m.patch('/account').send({ theme: 'dark' }).expect(200);
+    expect((await m.get('/auth/me').expect(200)).body.theme).toBe('dark');
+    await m.patch('/account').send({ theme: 'neon' }).expect(422);
+    await m.post(`/introductions/${'a'.repeat(24)}/feedback`).send({ rating: 4, tags: [] }).expect(404); // not their introduction, but the route exists
+    await request(t.app).put('/api/v1/guides/some-guide/progress').send({ positionSec: 3 }).expect(401);
   });
 });

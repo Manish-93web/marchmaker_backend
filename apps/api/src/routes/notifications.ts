@@ -49,7 +49,7 @@ export function notificationsRouter(ctx: AppContext): Router {
   );
 
   r.post(
-    '/notifications/read-all',
+    ['/notifications/read-all', '/notifications/read'],
     asyncHandler(async (req, res) => {
       res.json(await svc.markAllRead(authedUser(req).userId));
     }),

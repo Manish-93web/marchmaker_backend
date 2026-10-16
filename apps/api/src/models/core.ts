@@ -51,6 +51,7 @@ const userSchema = new Schema(
     referredBy: { type: Schema.Types.ObjectId, ref: 'User' },
     notificationPrefs: { type: Schema.Types.Mixed, default: {} },
     locale: { type: String, default: 'en-IN' },
+    theme: { type: String, enum: ['light', 'dark', 'system'], default: 'system' },
     twoFactor: {
       secretEnc: { type: String, select: false },
       enabled: { type: Boolean, default: false },

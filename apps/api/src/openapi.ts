@@ -161,6 +161,10 @@ const routes: Route[] = [
   { method: 'post', path: '/billing/confirm', summary: 'Ask the server to confirm a checkout with the provider', tag: 'Billing', auth: true },
   { method: 'post', path: '/billing/change-plan', summary: 'Upgrade now or downgrade at cycle end', tag: 'Billing', auth: true, body: changePlanSchema },
   { method: 'post', path: '/billing/cancel', summary: 'Cancel at the end of the paid period', tag: 'Billing', auth: true },
+  { method: 'post', path: '/webhooks/resend', summary: 'Email provider events: delivered, bounced, complained (Svix signature verified)', tag: 'Webhooks' },
+  { method: 'get', path: '/webhooks/whatsapp', summary: 'WhatsApp webhook verification handshake', tag: 'Webhooks' },
+  { method: 'post', path: '/webhooks/whatsapp', summary: 'WhatsApp delivery receipts and inbound opt-out words (Meta signature verified)', tag: 'Webhooks' },
+  { method: 'post', path: '/webhooks/calls', summary: 'Telephony provider call-status callback (signature verified)', tag: 'Webhooks' },
   { method: 'post', path: '/webhooks/razorpay', summary: 'Payment provider webhook (signature verified)', tag: 'Billing' },
 ];
 

@@ -86,16 +86,17 @@ Re-read the full prompt and checked it against the code: every `/api/v1` route (
 | E3 | Spec-named paths now answer alongside the original ones: `/billing/invoices/:id/pdf`, `/push/subscribe`, `/astrology/profile`, `/astrology/introductions/:id`, `/support/tickets/:id/messages` and `/rate`, `/wallet/ledger`. (`/auth/password/forgot` and `/reset` already matched; the earlier note was wrong.) Still different: `/feedback/introductions` and `/notifications/read-all`, `/guide-progress` |
 | E6 | Already done: right-click is blocked on revealed photos (the earlier note was wrong) |
 
-### Still partial (all P2)
+| E3 (rest) | `/introductions/:id/feedback`, `/notifications/read` and `/guides/:slug/progress` now answer too |
+| E4 | The generated OpenAPI document lists the Resend, WhatsApp and call webhooks |
+| E5 | Theme (and language) are saved on the member's account and adopted on every device after sign-in |
+| E7 | Added to the shared library, with stories and tests: RangeSlider, Stepper, BlurredPhoto, IntroductionCard. Toast stays Sonner; DataTable, CameraCapture, PhotoUploader and ConsentBanner remain in the apps because they depend on app data and APIs |
+
+### Still different, by decision (P2)
 
 | ID | Gap |
 |---|---|
-| E3 | The three paths named above |
-| E4 | The generated OpenAPI document omits the Resend, WhatsApp and call webhooks (mounted outside the versioned router) |
-| E5 | Light/dark/system theme is saved per browser, not per member account |
-| E7 | Slider/RangeSlider, Stepper, IntroductionCard, BlurredPhoto, PhotoUploader, CameraCapture, Toast, DataTable and ConsentBanner live in the apps, not the shared library or Storybook |
 | E8 | Spec names `vite-plugin-pwa` (Workbox) and `vite-ssg`; a hand-written service worker and a custom prerender script are used (D-079) |
-| E9 | Several collection names differ from section 8 (`callLogs`, `astroProfiles`, `reports` doubling as moderation cases) |
+| E9 | Several collection names differ from section 8 (`callLogs`, `astroProfiles`, `reports` doubling as moderation cases); behaviour matches |
 | E10 | No PostHog funnels or `POSTHOG_KEY`; first-party analytics and the admin Insights page are used instead |
 
 Not re-run line by line in this pass: every sentence of M3 to M12 behaviour (those were verified by their phase tests earlier).

@@ -71,6 +71,18 @@ export function growthRouter(): Router {
       res.status(201).json(await feedback.submit(authedUser(req).userId, req.body));
     }),
   );
+  r.post(
+    '/introductions/:id/feedback',
+    validate({ params: idParams }),
+    (req, _res, next) => {
+      req.body = { ...(req.body as object), introductionId: String(req.params.id) };
+      next();
+    },
+    validate({ body: introFeedbackSchema }),
+    asyncHandler(async (req, res) => {
+      res.status(201).json(await feedback.submit(authedUser(req).userId, req.body));
+    }),
+  );
   r.get(
     '/feedback/pending',
     asyncHandler(async (req, res) => {

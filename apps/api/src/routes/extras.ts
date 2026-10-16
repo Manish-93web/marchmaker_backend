@@ -4,7 +4,7 @@ import { birthDetailsSchema, callOptInSchema, rtcSignalSchema, guideAudioRequest
 import type { AppContext } from '../context';
 import { requireFlag } from '../lib/flags';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { authedUser, requirePermission } from '../middleware/auth';
+import { authedUser, requireAuth, requirePermission } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import * as astrology from '../services/astrology';
 import * as guides from '../services/guides';
@@ -51,7 +51,8 @@ export function extrasRouter(ctx: AppContext): Router {
 
   // ----- guide progress (resume position and playback speed)
   r.get(
-    '/guide-progress/:slug',
+    ['/guide-progress/:slug', '/guides/:slug/progress'],
+    requireAuth,
     requireFlag('e_guides'),
     validate({ params: slugParams }),
     asyncHandler(async (req, res) => {
@@ -59,7 +60,8 @@ export function extrasRouter(ctx: AppContext): Router {
     }),
   );
   r.put(
-    '/guide-progress/:slug',
+    ['/guide-progress/:slug', '/guides/:slug/progress'],
+    requireAuth,
     requireFlag('e_guides'),
     validate({ params: slugParams, body: guides.guideProgressSchema }),
     asyncHandler(async (req, res) => {

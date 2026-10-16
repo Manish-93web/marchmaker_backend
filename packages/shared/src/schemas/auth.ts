@@ -73,6 +73,7 @@ export const accountPatchSchema = z
   .object({
     firstName: z.string().trim().min(1).max(60).optional(),
     locale: z.enum(['en-IN', 'hi-IN']).optional(),
+    theme: z.enum(['light', 'dark', 'system']).optional(),
     currentPassword: z.string().max(128).optional(),
     newPassword: passwordSchema.optional(),
   })

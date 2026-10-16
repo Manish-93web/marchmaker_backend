@@ -24,13 +24,14 @@ async function setJourney(userId: string, from: JourneyState, to: JourneyState) 
 export async function patchAccount(
   ctx: AppContext,
   userId: string,
-  patch: { firstName?: string; locale?: string; currentPassword?: string; newPassword?: string },
+  patch: { firstName?: string; locale?: string; theme?: 'light' | 'dark' | 'system'; currentPassword?: string; newPassword?: string },
   currentSessionId: string,
 ) {
   const user = await User.findById(userId).select('+passwordHash');
   if (!user) throw notFound();
   if (patch.firstName) user.firstName = patch.firstName;
   if (patch.locale) user.locale = patch.locale;
+  if (patch.theme) user.theme = patch.theme;
 
   if (patch.newPassword) {
     if (user.passwordHash) {

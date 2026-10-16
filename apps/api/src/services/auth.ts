@@ -470,6 +470,7 @@ export async function buildMe(ctx: AppContext, userId: string, sessionId: string
     walletBalancePaise: user.walletBalancePaise,
     referralCode: user.referralCode,
     locale: user.locale,
+    theme: user.theme ?? 'system',
     hasPassword: !!(await User.exists({ _id: userId, passwordHash: { $exists: true, $ne: null } })),
     twoFactorEnabled: !!user.twoFactor?.enabled,
     mfa,
