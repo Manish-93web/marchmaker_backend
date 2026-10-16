@@ -12,6 +12,12 @@ export async function connectMongo(uri: string, log: Logger): Promise<typeof mon
   await mongoose.connect(uri, {
     serverSelectionTimeoutMS: 8_000,
     maxPoolSize: 20,
+    // Cloud databases and home routers drop idle connections: retire them before that happens and notice dead ones quickly.
+    maxIdleTimeMS: 30_000,
+    heartbeatFrequencyMS: 10_000,
+    socketTimeoutMS: 60_000,
+    retryWrites: true,
+    retryReads: true,
     autoIndex: process.env.NODE_ENV !== 'production',
   });
   log.info('mongo connected');
