@@ -1,0 +1,52 @@
+name: marchmaker
+
+services:
+  mongo:
+    image: mongo:7
+    # Single-node replica set so multi-document transactions work locally.
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports: ['27017:27017']
+    volumes: ['mongo-data:/data/db']
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}).ok }"
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ['6379:6379']
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes: ['redis-data:/data']
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ['9000:9000', '9001:9001']
+    volumes: ['minio-data:/data']
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on: [minio]
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+      mc mb -p local/marchmaker-photos local/marchmaker-identity local/marchmaker-documents;
+      mc anonymous set none local/marchmaker-photos;
+      mc anonymous set none local/marchmaker-identity;
+      mc anonymous set none local/marchmaker-documents;
+      exit 0;
+      "
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ['1025:1025', '8025:8025']
+
+volumes:
+  mongo-data:
+  redis-data:
+  minio-data:
