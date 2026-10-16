@@ -12,7 +12,8 @@ import { createStorage, type ObjectStorage } from './lib/storage';
 import { createImageModeration, type ImageModeration } from './lib/moderation';
 import { createTranscriber, type TranscriptionProvider } from './lib/transcription';
 import { createNarrativeRewriter } from './lib/narrativeRewriter';
-import { createKycProvider, CircuitBreaker, type KycProvider } from './lib/kyc';
+import { ProviderBreaker, withBreaker, type BreakerOptions } from './lib/breaker';
+import { createKycProvider, type KycProvider } from './lib/kyc';
 import { createPush, createWhatsApp, type PushSender, type WhatsAppSender } from './lib/channels';
 import { BullJobsAdmin, type JobsAdmin } from './lib/jobsAdmin';
 import { createAstrology, type AstrologyProvider } from './lib/astrology';
@@ -35,7 +36,7 @@ export interface AppContext {
   narrativeRewriter: NarrativeRewriter | null;
   /** Automated ID + liveness provider; null when not configured (manual review only). */
   kyc: KycProvider | null;
-  kycBreaker: CircuitBreaker;
+  kycBreaker: ProviderBreaker;
   /** Razorpay (or the mock); null when payments are not configured. */
   payments: PaymentProvider | null;
   whatsapp: WhatsAppSender | null;
@@ -73,22 +74,27 @@ export function buildContext(
   const warn = (err: unknown) => base.log.warn({ err }, 'rate limiter falling back to memory');
   const limiter = (name: string, limit: number, windowMs: number) =>
     redis ? redisAttemptLimiter(redis, `rl:${name}`, limit, windowMs, warn) : memoryAttemptLimiter(limit, windowMs);
+  // Every outside provider sits behind a circuit breaker (opossum). Tests use the plain mocks so failures stay deterministic.
+  const breakerOpts: BreakerOptions = { log: base.log, timeoutMs: base.env.NODE_ENV === 'test' ? 600_000 : 20_000 };
+  const guard = <T extends object>(name: string, impl: T | null, methods: (keyof T)[]) => (base.env.NODE_ENV === 'test' ? impl : withBreaker(name, impl, methods, breakerOpts));
+  const payments = guard('payments', createPaymentProvider(base.env), ['createOrder', 'createPlan', 'createSubscription', 'getSubscription', 'updateSubscription', 'cancelSubscription', 'pauseSubscription', 'resumeSubscription', 'fetchOrderPayments', 'refund']);
   return {
     ...base,
-    mailer: wrapMailer(base),
+    sms: guard('sms', base.sms, ['send']) ?? base.sms,
+    mailer: wrapMailer({ ...base, mailer: guard('email', base.mailer, ['send']) ?? base.mailer }),
     crypto: fieldCryptoFromEnv(base.env),
     storage: createStorage(base.env),
     moderation: createImageModeration(base.env, base.log),
     transcriber: createTranscriber(base.env),
     narrativeRewriter: createNarrativeRewriter(base.env),
     kyc: createKycProvider(base.env),
-    payments: createPaymentProvider(base.env),
-    whatsapp: createWhatsApp(base.env, base.log),
-    push: createPush(base.env),
-    calls: createCallProvider(base.env, base.log),
+    payments,
+    whatsapp: guard('whatsapp', createWhatsApp(base.env, base.log), ['sendTemplate']),
+    push: guard('push', createPush(base.env), ['send']),
+    calls: guard('telephony', createCallProvider(base.env, base.log), ['connect']),
     jobs: base.env.REDIS_URL && base.env.NODE_ENV !== 'test' ? new BullJobsAdmin(base.env.REDIS_URL) : null,
-    astrology: createAstrology(base.env),
-    kycBreaker: new CircuitBreaker({ failureThreshold: 5, resetAfterMs: 30_000 }),
+    astrology: guard('astrology', createAstrology(base.env), ['chart', 'match']),
+    kycBreaker: new ProviderBreaker('kyc', breakerOpts),
     permissions: new PermissionStore(),
     redis,
     loginLimiter: limiter('login', 10, 15 * 60_000),

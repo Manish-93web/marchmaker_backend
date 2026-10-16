@@ -13,7 +13,8 @@ import { buildContext } from '../src/context';
 import { buildExport, purgeDueAccounts } from '../src/jobs/accountJobs';
 import { registerMemberDataHooks } from '../src/jobs/registerPurge';
 import { pollPendingKyc, processKycEvent, purgeExpiredEvidence } from '../src/jobs/verificationJobs';
-import { CircuitBreaker, CircuitOpenError, signWebhook, type MockKycProvider } from '../src/lib/kyc';
+import { breakerStates, CircuitOpenError, ProviderBreaker, withBreaker } from '../src/lib/breaker';
+import { signWebhook, type MockKycProvider } from '../src/lib/kyc';
 import { MemoryMailer } from '../src/lib/mailer';
 import { createLogger } from '../src/lib/logger';
 import { hashPassword } from '../src/lib/passwords';
@@ -515,19 +516,31 @@ describe('automated KYC and liveness', () => {
 });
 
 describe('circuit breaker', () => {
-  it('opens after repeated failures, then allows a probe after the reset window', async () => {
-    let t = 0;
-    const b = new CircuitBreaker({ failureThreshold: 3, resetAfterMs: 1000, now: () => t });
-    const fail = async () => {
+  it('opens after repeated provider failures, ignores caller mistakes, and probes again after the reset window', async () => {
+    const b = new ProviderBreaker('test-provider', { volumeThreshold: 3, errorThresholdPercentage: 50, resetTimeoutMs: 150 });
+    const down = async () => {
       throw new Error('down');
     };
-    for (let i = 0; i < 3; i++) await expect(b.run(fail)).rejects.toThrow('down');
+    // A 4xx is the caller's mistake and does not count against the provider.
+    for (let i = 0; i < 1; i++) await expect(b.run(async () => { throw Object.assign(new Error('bad request'), { status: 400 }); })).rejects.toThrow('bad request');
+    expect(b.state).toBe('closed');
+
+    for (let i = 0; i < 2; i++) await expect(b.run(down)).rejects.toThrow('down');
     expect(b.state).toBe('open');
     await expect(b.run(async () => 'ok')).rejects.toBeInstanceOf(CircuitOpenError);
 
-    t = 1500;
-    expect(b.state).toBe('half_open');
+    await new Promise((r) => setTimeout(r, 250));
     await expect(b.run(async () => 'ok')).resolves.toBe('ok');
     expect(b.state).toBe('closed');
+    expect(breakerStates().map((s) => s.name)).toContain('test-provider');
+    b.close();
+  });
+
+  it('wraps only the named adapter methods', async () => {
+    const adapter = { name: 'x', async send(n: number) { return n * 2; }, sync() { return 'plain'; } };
+    const wrapped = withBreaker('wrap-test', adapter, ['send'], { volumeThreshold: 2 })!;
+    expect(await wrapped.send(4)).toBe(8);
+    expect(wrapped.sync()).toBe('plain');
+    expect(wrapped.name).toBe('x');
   });
 });

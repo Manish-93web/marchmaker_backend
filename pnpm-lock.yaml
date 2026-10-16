@@ -107,6 +107,9 @@ importers:
       nodemailer:
         specifier: ^10.1.1
         version: 10.1.1
+      opossum:
+        specifier: ^10.0.0
+        version: 10.0.0
       otplib:
         specifier: ^13.5.0
         version: 13.5.0
@@ -153,6 +156,9 @@ importers:
       '@types/nodemailer':
         specifier: ^8.0.2
         version: 8.0.2
+      '@types/opossum':
+        specifier: ^8.1.9
+        version: 8.1.9
       '@types/pdfkit':
         specifier: ^0.17.6
         version: 0.17.6
@@ -1489,6 +1495,9 @@ packages:
   '@types/nodemailer@8.0.2':
     resolution: {integrity: sha512-c7M5ox8p0nEOfbJ2E9Qcmt8/QCu/VzsiAhzBiZbvky2PhKZDHpKB3sQHBM5MEZNkCfBOaS6S9//AGPRTNB7IaA==}
 
+  '@types/opossum@8.1.9':
+    resolution: {integrity: sha512-Jm/tYxuJFefiwRYs+/EOsUP3ktk0c8siMgAHPLnA4PXF4wKghzcjqf88dY+Xii5jId5Txw4JV0FMKTpjbd7KJA==}
+
   '@types/pdfkit@0.17.6':
     resolution: {integrity: sha512-tIwzxk2uWKp0Cq9JIluQXJid77lYhF52EsIOwhsMF4iWLA6YneoBR1xVKYYdAysHuepUB0OX4tdwMiUDdGKmig==}
 
@@ -2778,6 +2787,10 @@ packages:
 
   openapi3-ts@4.6.1:
     resolution: {integrity: sha512-XW9MOldkhoICNeXVzzmXzmOW5G73ppOEGmh7fLCqHjgfdEYCGGN+00MlVCeUZgovjjfC56j9tvtDt1zGabNjjA==}
+
+  opossum@10.0.0:
+    resolution: {integrity: sha512-sghtqL8Usj+et06Zui0nyn0R6FFsl7cyuoU+d7MctYU0nbS7Htzjleh+tWohFqk1Rp1srrFwbFa8Vxd0O64w6A==}
+    engines: {node: ^26 || ^24 || ^22}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -4466,6 +4479,10 @@ snapshots:
     dependencies:
       '@types/node': 26.6.5
 
+  '@types/opossum@8.1.9':
+    dependencies:
+      '@types/node': 26.6.5
+
   '@types/pdfkit@0.17.6':
     dependencies:
       '@types/node': 26.6.5
@@ -5778,6 +5795,8 @@ snapshots:
   openapi3-ts@4.6.1:
     dependencies:
       yaml: 2.9.1
+
+  opossum@10.0.0: {}
 
   optionator@0.9.4:
     dependencies:

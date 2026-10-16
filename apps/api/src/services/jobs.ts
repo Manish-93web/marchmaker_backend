@@ -5,6 +5,7 @@ import { audit } from '../lib/audit';
 import { AppError, notFound } from '../lib/errors';
 import type { QueueKey } from '../lib/jobsAdmin';
 import { Outbox } from '../models/core';
+import { breakerStates } from '../lib/breaker';
 
 interface Actor {
   userId: string;
@@ -31,6 +32,8 @@ export async function overview(ctx: AppContext) {
   return {
     queuesAvailable: Boolean(ctx.jobs) && counts !== null,
     queues: counts,
+    /** Circuit state of each outside provider; "open" means calls are paused after repeated failures. */
+    circuits: breakerStates(),
     outbox: { pending, failed, oldestPendingAgeSec: oldest ? Math.round((Date.now() - oldest.createdAt.getTime()) / 1000) : 0 },
   };
 }
