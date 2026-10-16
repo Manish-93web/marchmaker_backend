@@ -1,6 +1,6 @@
 import express, { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
-import { birthDetailsSchema, callOptInSchema, guideAudioRequestSchema, guideInputSchema, type Role } from '@marchmaker/shared';
+import { birthDetailsSchema, callOptInSchema, rtcSignalSchema, guideAudioRequestSchema, guideInputSchema, type Role } from '@marchmaker/shared';
 import type { AppContext } from '../context';
 import { requireFlag } from '../lib/flags';
 import { asyncHandler } from '../middleware/asyncHandler';
@@ -9,6 +9,8 @@ import { validate } from '../middleware/validate';
 import * as astrology from '../services/astrology';
 import * as guides from '../services/guides';
 import * as voice from '../services/voice';
+import * as rtc from '../services/rtc';
+import { streamCallSignals } from '../services/rtcStream';
 
 export const EXTRAS_PREFIXES = ['/astrology', '/guide-progress'];
 
@@ -80,6 +82,40 @@ export function extrasRouter(ctx: AppContext): Router {
     validate({ params: idParams }),
     asyncHandler(async (req, res) => {
       res.status(202).json(await voice.startCall(ctx, String(req.params.id), authedUser(req).userId));
+    }),
+  );
+  // ----- in-app voice (WebRTC): signalling only; audio goes peer to peer or through TURN, never through the API
+  r.get(
+    '/introductions/:id/rtc/config',
+    requireFlag('voice_calls'),
+    validate({ params: idParams }),
+    asyncHandler(async (req, res) => {
+      noStore(res).json(await rtc.rtcConfig(ctx, String(req.params.id), authedUser(req).userId));
+    }),
+  );
+  r.post(
+    '/introductions/:id/rtc/call',
+    requireFlag('voice_calls'),
+    validate({ params: idParams }),
+    asyncHandler(async (req, res) => {
+      res.status(201).json(await rtc.startRtcCall(ctx, String(req.params.id), authedUser(req).userId));
+    }),
+  );
+  r.post(
+    '/introductions/:id/rtc/signal',
+    requireFlag('voice_calls'),
+    validate({ params: idParams, body: rtcSignalSchema }),
+    asyncHandler(async (req, res) => {
+      res.json(await rtc.signal(String(req.params.id), authedUser(req).userId, req.body));
+    }),
+  );
+  r.get(
+    '/introductions/:id/rtc/stream',
+    requireFlag('voice_calls'),
+    validate({ params: idParams }),
+    asyncHandler(async (req, res) => {
+      await rtc.rtcConfig(ctx, String(req.params.id), authedUser(req).userId);
+      await streamCallSignals(req, res, String(req.params.id), authedUser(req).userId);
     }),
   );
   r.get(

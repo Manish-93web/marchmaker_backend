@@ -11,10 +11,28 @@ const callLogSchema = new Schema(
     providerCallId: { type: String, unique: true, sparse: true },
     status: { type: String, enum: ['initiated', 'ringing', 'in_progress', 'completed', 'failed', 'no_answer', 'busy'], default: 'initiated' },
     durationSec: Number,
+    /** phone = bridged through the telephony provider; webrtc = in-app voice. */
+    mode: { type: String, enum: ['phone', 'webrtc'], default: 'phone' },
+    startedAt: Date,
+    endedAt: Date,
   },
   base,
 );
 callLogSchema.index({ introductionId: 1, createdAt: -1 });
+
+/** Short-lived signalling messages between the two people on an in-app call. They expire after five minutes. */
+const callSignalSchema = new Schema(
+  {
+    callId: { type: Schema.Types.ObjectId, required: true, index: true },
+    introductionId: { type: Schema.Types.ObjectId, required: true },
+    from: { type: Schema.Types.ObjectId, required: true },
+    to: { type: Schema.Types.ObjectId, required: true, index: true },
+    kind: { type: String, required: true },
+    payload: Schema.Types.Mixed,
+    createdAt: { type: Date, default: Date.now, expires: 300 },
+  },
+  { versionKey: false },
+);
 
 /** Birth details are encrypted at rest and removed on request or with the account. */
 const astroProfileSchema = new Schema(
@@ -44,5 +62,6 @@ const astroReportSchema = new Schema(
 astroReportSchema.index({ introductionId: 1, kind: 1 }, { unique: true, partialFilterExpression: { introductionId: { $exists: true } } });
 
 export const CallLog = model('CallLog', callLogSchema);
+export const CallSignal = model('CallSignal', callSignalSchema);
 export const AstroProfile = model('AstroProfile', astroProfileSchema);
 export const AstroReport = model('AstroReport', astroReportSchema);

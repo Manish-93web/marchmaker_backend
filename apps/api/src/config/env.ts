@@ -79,6 +79,11 @@ const envSchema = z.object({
   /** Comma-separated E.164 numbers that get a WhatsApp page for critical and overdue safety reports. */
   ONCALL_WHATSAPP: z.string().optional(),
   CALLS_PROVIDER: z.enum(['none', 'mock', 'exotel']).default('mock'),
+  /** In-app (WebRTC) voice calls: STUN and TURN servers. TURN credentials are short-lived and derived from the shared secret. */
+  RTC_STUN_URLS: z.string().default('stun:stun.l.google.com:19302'),
+  RTC_TURN_URLS: z.string().optional(),
+  RTC_TURN_SECRET: z.string().optional(),
+  RTC_TURN_TTL_SEC: z.coerce.number().int().min(60).max(86_400).default(3600),
   CALLS_WEBHOOK_SECRET: z.string().min(8).default('dev-only-calls-webhook-secret'),
   CALLS_CALLER_ID: z.string().optional(),
   EXOTEL_SID: z.string().optional(),

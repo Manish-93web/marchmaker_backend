@@ -3,7 +3,7 @@ import { Photo, Preference, Profile } from '../models/profile';
 import { allPhotoKeys } from '../services/photos';
 import { AssessmentResponse } from '../models/assessment';
 import { Verification } from '../models/verification';
-import { AstroProfile, AstroReport, CallLog } from '../models/extras';
+import { AstroProfile, AstroReport, CallLog, CallSignal } from '../models/extras';
 import { Block, Introduction } from '../models/matching';
 import { CreditLedger, Message, MessageThread, Report } from '../models/social';
 import { withTransaction } from '../db/connection';
@@ -69,6 +69,7 @@ export function registerMemberDataHooks(ctx: AppContext): void {
       AstroProfile.deleteOne({ userId }),
       AstroReport.deleteMany({ $or: [{ userId }, { memberIds: userId }] }),
       CallLog.deleteMany({ initiatedBy: userId }),
+      CallSignal.deleteMany({ $or: [{ from: userId }, { to: userId }] }),
     ]);
   });
 

@@ -22,6 +22,7 @@ import { FeatureFlag, User } from '../src/models/core';
 import { AstroProfile, AstroReport, CallLog } from '../src/models/extras';
 import { Introduction } from '../src/models/matching';
 import { startCall } from '../src/services/voice';
+import { closeUnanswered, iceServers, pendingFor, startRtcCall } from '../src/services/rtc';
 
 let mongod: MongoMemoryReplSet;
 beforeAll(async () => {
@@ -318,5 +319,64 @@ describe('astrology', () => {
     const outsider = await person(t, premium);
     await agree(outsider.id);
     await outsider.get(`/introductions/${id}/astrology`).expect(404);
+  });
+});
+
+describe('in-app voice (WebRTC signalling)', () => {
+  beforeEach(() => flag('voice_calls'));
+
+  async function agreed(t: T) {
+    const pair = await unlockedPair(t);
+    for (const p of [pair.a, pair.b]) await p.post(`/introductions/${pair.id}/voice/opt-in`).send({ open: true }).expect(200);
+    return pair;
+  }
+
+  it('hands out short-lived TURN credentials only to a pair who both agreed', async () => {
+    const t = setup();
+    const { a, id } = await unlockedPair(t);
+    await a.get(`/introductions/${id}/rtc/config`).expect(409);
+    const ice = iceServers({ env: { RTC_STUN_URLS: 'stun:s.example:3478', RTC_TURN_URLS: 'turn:t.example:3478', RTC_TURN_SECRET: 'sekret', RTC_TURN_TTL_SEC: 600 } } as never, 'u1', 1_700_000_000_000);
+    expect(ice.iceServers[0]).toEqual({ urls: ['stun:s.example:3478'] });
+    expect(ice.iceServers[1]).toMatchObject({ urls: ['turn:t.example:3478'], username: `${1_700_000_600}:u1` });
+    expect(ice.iceServers[1]!.credential).toBeTruthy();
+  });
+
+  it('runs a call: invite, offer, accept, end, with the duration measured by the server', async () => {
+    const t = setup();
+    const { a, b, id } = await agreed(t);
+    const call = await startRtcCall(t.ctx, id, a.id, DAYTIME);
+    expect(call.callId).toMatch(/^[a-f\d]{24}$/);
+    await expect(startRtcCall(t.ctx, id, b.id, DAYTIME)).rejects.toMatchObject({ status: 409 }); // already ringing
+
+    await a.post(`/introductions/${id}/rtc/signal`).send({ callId: call.callId, kind: 'offer', payload: { sdp: 'v=0...' } }).expect(200);
+    const forB = await pendingFor(b.id, id);
+    expect(forB.map((s) => s.kind)).toEqual(['invite', 'offer']);
+    expect(await pendingFor(a.id, id)).toHaveLength(0);
+
+    await a.post(`/introductions/${id}/rtc/signal`).send({ callId: call.callId, kind: 'accept' }).expect(409); // the caller cannot accept their own call
+    await b.post(`/introductions/${id}/rtc/signal`).send({ callId: call.callId, kind: 'accept' }).expect(200);
+    await b.post(`/introductions/${id}/rtc/signal`).send({ callId: call.callId, kind: 'answer', payload: { sdp: 'v=0 answer' } }).expect(200);
+    await CallLog.updateOne({ _id: call.callId }, { $set: { startedAt: new Date(Date.now() - 95_000) } });
+    await a.post(`/introductions/${id}/rtc/signal`).send({ callId: call.callId, kind: 'end' }).expect(200);
+    const log = (await CallLog.findById(call.callId).lean())!;
+    expect(log).toMatchObject({ status: 'completed', mode: 'webrtc' });
+    expect(log.durationSec).toBeGreaterThanOrEqual(95);
+    await a.post(`/introductions/${id}/rtc/signal`).send({ callId: call.callId, kind: 'candidate', payload: {} }).expect(409); // ended
+  });
+
+  it('refuses outsiders, oversized messages and unknown calls, and closes unanswered calls', async () => {
+    const t = setup();
+    const { a, b, id } = await agreed(t);
+    const outsider = await person(t);
+    const call = await startRtcCall(t.ctx, id, a.id, DAYTIME);
+    await outsider.post(`/introductions/${id}/rtc/signal`).send({ callId: call.callId, kind: 'offer' }).expect(404);
+    await a.post(`/introductions/${id}/rtc/signal`).send({ callId: call.callId, kind: 'offer', payload: { sdp: 'x'.repeat(9000) } }).expect(413);
+    await a.post(`/introductions/${id}/rtc/signal`).send({ callId: 'a'.repeat(24), kind: 'offer' }).expect(404);
+    await b.post(`/introductions/${id}/rtc/signal`).send({ callId: call.callId, kind: 'decline' }).expect(200);
+    expect((await CallLog.findById(call.callId).lean())!.status).toBe('busy');
+
+    const second = await startRtcCall(t.ctx, id, a.id, DAYTIME);
+    expect(await closeUnanswered(new Date(Date.now() + 120_000))).toBe(1);
+    expect((await CallLog.findById(second.callId).lean())!.status).toBe('no_answer');
   });
 });

@@ -7,7 +7,7 @@ import { expireAndRemind, releaseDueMatches, runForMember, runNightlyIfDue } fro
 import { pollPendingKyc, processKycEvent, purgeExpiredEvidence } from '@marchmaker/api/verification-jobs';
 import { handleInvoiceCreated, lapseAccess, reconcile } from '@marchmaker/api/billing-jobs';
 import { refreshLearnedWeights, sendCheckIns } from '@marchmaker/api/growth-jobs';
-import { sendSlaAlerts } from '@marchmaker/api/sla-jobs';
+import { closeUnansweredCalls, sendSlaAlerts } from '@marchmaker/api/sla-jobs';
 import { releaseReferralRewards } from '@marchmaker/api/referral-jobs';
 import { closeStaleTickets } from '@marchmaker/api/support-jobs';
 import { dispatchEvent, sendDueDeliveries, sendMessageDigests } from '@marchmaker/api/notification-jobs';
@@ -77,4 +77,5 @@ export async function runReleaseTick(ctx: WorkerContext): Promise<void> {
   await releaseDueMatches(ctx);
   await sendDueDeliveries(ctx);
   await expireAndRemind();
+  await closeUnansweredCalls();
 }

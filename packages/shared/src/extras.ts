@@ -115,6 +115,17 @@ export function callWindowOpen(now: Date): boolean {
 
 export const callOptInSchema = z.object({ open: z.boolean() });
 
+export const RTC_SIGNAL_KINDS = ['offer', 'answer', 'candidate', 'accept', 'decline', 'end'] as const;
+export type RtcSignalKind = (typeof RTC_SIGNAL_KINDS)[number];
+
+/** Session descriptions and ICE candidates are small; anything bigger is refused. */
+export const rtcSignalSchema = z.object({
+  callId: z.string().regex(/^[a-f\d]{24}$/i),
+  kind: z.enum(RTC_SIGNAL_KINDS),
+  payload: z.record(z.string().max(40), z.unknown()).optional(),
+});
+export const RTC_MAX_PAYLOAD_BYTES = 8 * 1024;
+
 // ------------------------------------------------------------------ astrology
 
 export const birthDetailsSchema = z.object({
