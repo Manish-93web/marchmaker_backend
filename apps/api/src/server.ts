@@ -1,0 +1,45 @@
+import 'dotenv/config';
+import { createServer } from 'node:http';
+import { createApp } from './app';
+import { buildContext } from './context';
+import { createMailer } from './lib/mailer';
+import { createSms } from './lib/sms';
+import { loadEnv } from './config/env';
+import { connectMongo, disconnectMongo, isMongoReady } from './db/connection';
+import { createLogger } from './lib/logger';
+
+async function main() {
+  const env = loadEnv();
+  const log = createLogger(env.LOG_LEVEL, env.NODE_ENV === 'development');
+
+  let shuttingDown = false;
+  await connectMongo(env.MONGODB_URI, log);
+
+  const ctx = buildContext({ env, log, mailer: createMailer(env, log), sms: createSms(env, log) });
+  const app = createApp({ env, log, ctx, isReady: () => !shuttingDown && isMongoReady() });
+  const server = createServer(app);
+  server.keepAliveTimeout = 65_000;
+  server.listen(env.PORT, () => log.info({ port: env.PORT }, 'api listening'));
+
+  const shutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    log.info({ signal }, 'shutting down');
+    const force = setTimeout(() => process.exit(1), 15_000);
+    force.unref();
+    server.close(async () => {
+      await ctx.redis?.quit().catch(() => undefined);
+      await disconnectMongo().catch(() => undefined);
+      process.exit(0);
+    });
+  };
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('unhandledRejection', (err) => log.error({ err }, 'unhandledRejection'));
+}
+
+main().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error(err);
+  process.exit(1);
+});

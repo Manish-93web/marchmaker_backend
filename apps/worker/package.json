@@ -1,0 +1,32 @@
+{
+  "name": "@marchmaker/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test --ext .ts",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1152.0",
+    "@marchmaker/api": "workspace:^",
+    "@marchmaker/shared": "workspace:^",
+    "bullmq": "^6.3.15",
+    "dotenv": "^18.0.8",
+    "ioredis": "^6.0.0",
+    "pdfkit": "^0.20.2",
+    "pino": "^10.4.0",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@marchmaker/config": "workspace:^",
+    "mongodb-memory-server": "^11.3.0",
+    "mongoose": "^9.11.2",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.4"
+  }
+}
