@@ -19,6 +19,7 @@ import { User } from '../src/models/core';
 import { CreditLedger } from '../src/models/social';
 import { WebhookEvent } from '../src/models/verification';
 import { expireDueLots } from '../src/services/credits';
+import { renderInvoicePdf } from '../src/lib/invoicePdf';
 import { lapseAccess, reconcile } from '../src/services/billing';
 
 let mongod: MongoMemoryReplSet;
@@ -504,5 +505,25 @@ describe('member billing views', () => {
     expect(inv.buyer!.gstin).toBe('27AAPFU0939F1ZV');
     expect(inv.placeOfSupply).toBe('Maharashtra');
     expect(inv.tax!.intraState).toBe(false);
+  });
+});
+
+describe('invoice pdf', () => {
+  it('renders a valid PDF for an invoice and for a credit note', async () => {
+    const base = {
+      number: 'MM/2026-27/000001',
+      kind: 'invoice' as const,
+      issuedAt: new Date('2026-04-01'),
+      seller: { name: 'Marchmaker', gstin: '29ABCDE1234F1Z5', address: 'Bengaluru' },
+      buyer: { name: 'Asha', email: 'a@example.com' },
+      placeOfSupply: 'Karnataka',
+      lineItems: [{ description: '1 introduction credit', sac: '998599', taxablePaise: 16_864 }],
+      tax: { ratePercent: 18, taxablePaise: 16_864, cgstPaise: 1_518, sgstPaise: 1_518, igstPaise: 0, totalPaise: 19_900 },
+    };
+    const pdf = await renderInvoicePdf(base);
+    expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+    expect(pdf.length).toBeGreaterThan(1000);
+    const note = await renderInvoicePdf({ ...base, kind: 'credit_note', relatesToNumber: base.number });
+    expect(note.subarray(0, 5).toString()).toBe('%PDF-');
   });
 });

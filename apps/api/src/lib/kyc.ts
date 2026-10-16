@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { KycResult } from '@marchmaker/shared';
 import type { Env } from '../config/env';
+import { createVendorKyc } from './kycVendors';
 
 export interface KycSession {
   sessionId: string;
@@ -130,6 +131,7 @@ export class RestKycProvider implements KycProvider {
 }
 
 export function createKycProvider(env: Env): KycProvider | null {
+  if (env.KYC_PROVIDER === 'hyperverge' || env.KYC_PROVIDER === 'idfy' || env.KYC_PROVIDER === 'digio') return createVendorKyc(env);
   if (env.KYC_PROVIDER === 'mock') return new MockKycProvider(env.KYC_WEBHOOK_SECRET);
   if (env.KYC_PROVIDER === 'rest' && env.KYC_BASE_URL && env.KYC_API_KEY) {
     return new RestKycProvider(env.KYC_BASE_URL.replace(/\/$/, ''), env.KYC_API_KEY, env.KYC_WEBHOOK_SECRET);

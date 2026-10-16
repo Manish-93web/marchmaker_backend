@@ -50,7 +50,11 @@ const envSchema = z.object({
   S3_BUCKET_DOCUMENTS: z.string().default('marchmaker-documents'),
   S3_IDENTITY_ACCESS_KEY_ID: z.string().optional(),
   S3_IDENTITY_SECRET_ACCESS_KEY: z.string().optional(),
-  KYC_PROVIDER: z.enum(['none', 'mock', 'rest']).default('none'),
+  KYC_PROVIDER: z.enum(['none', 'mock', 'rest', 'hyperverge', 'idfy', 'digio']).default('none'),
+  /** Second credential for vendors that need one (HyperVerge appKey, IDfy account id, Digio client secret). */
+  KYC_API_SECRET: z.string().optional(),
+  /** JSON merged over a vendor preset's request and result mapping, to correct it without a release. */
+  KYC_MAPPING_JSON: z.string().optional(),
   KYC_BASE_URL: z.string().optional(),
   KYC_API_KEY: z.string().optional(),
   KYC_WEBHOOK_SECRET: z.string().default('dev-only-kyc-webhook-secret'),
