@@ -10,7 +10,7 @@ import { refreshLearnedWeights, sendCheckIns } from '@marchmaker/api/growth-jobs
 import { sendSlaAlerts } from '@marchmaker/api/sla-jobs';
 import { releaseReferralRewards } from '@marchmaker/api/referral-jobs';
 import { closeStaleTickets } from '@marchmaker/api/support-jobs';
-import { dispatchEvent, sendDueDeliveries } from '@marchmaker/api/notification-jobs';
+import { dispatchEvent, sendDueDeliveries, sendMessageDigests } from '@marchmaker/api/notification-jobs';
 import { NOTIFICATION_SPECS } from '@marchmaker/shared';
 import { createMailer } from '@marchmaker/api/mailer';
 import { createSms } from '@marchmaker/api/sms';
@@ -68,6 +68,7 @@ export async function runSweeps(ctx: WorkerContext): Promise<void> {
   await releaseReferralRewards();
   await sendCheckIns();
   await refreshLearnedWeights();
+  await sendMessageDigests();
   await sendSlaAlerts(ctx);
 }
 

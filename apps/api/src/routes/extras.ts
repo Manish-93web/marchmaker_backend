@@ -10,7 +10,7 @@ import * as astrology from '../services/astrology';
 import * as guides from '../services/guides';
 import * as voice from '../services/voice';
 
-export const EXTRAS_PREFIXES = ['/astrology'];
+export const EXTRAS_PREFIXES = ['/astrology', '/guide-progress'];
 
 const id24 = z.string().regex(/^[a-f\d]{24}$/i);
 const idParams = z.object({ id: id24 });
@@ -46,6 +46,24 @@ export function publicExtrasRouter(ctx: AppContext): Router {
 /** Voice calls and astrology, behind their feature flags. The v1 router guards these with requireAuth. */
 export function extrasRouter(ctx: AppContext): Router {
   const r = Router();
+
+  // ----- guide progress (resume position and playback speed)
+  r.get(
+    '/guide-progress/:slug',
+    requireFlag('e_guides'),
+    validate({ params: slugParams }),
+    asyncHandler(async (req, res) => {
+      noStore(res).json(await guides.getProgress(authedUser(req).userId, String(req.params.slug)));
+    }),
+  );
+  r.put(
+    '/guide-progress/:slug',
+    requireFlag('e_guides'),
+    validate({ params: slugParams, body: guides.guideProgressSchema }),
+    asyncHandler(async (req, res) => {
+      res.json(await guides.saveProgress(authedUser(req).userId, String(req.params.slug), req.body));
+    }),
+  );
 
   // ----- voice calls (per introduction)
   r.post(

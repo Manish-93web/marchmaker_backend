@@ -11,6 +11,12 @@ import * as credits from '../services/credits';
 import { EVIDENCE_KINDS } from '@marchmaker/shared';
 import { registerExportCollector, registerPurgeHook } from './accountJobs';
 import { presentProfile } from '../services/profile';
+import { GuideProgress } from '../models/content';
+import { CheckinMarker, IntroFeedback } from '../models/growth';
+import { WhatsAppOptIn } from '../models/messaging';
+import { Delivery, Notification, PushSubscription } from '../models/notifications';
+import { Ticket, TicketMessage } from '../models/safety';
+import { SavedFilter } from '../models/cms';
 
 /** Wires profile, preference and photo data into account export and hard deletion. */
 export function registerMemberDataHooks(ctx: AppContext): void {
@@ -64,6 +70,38 @@ export function registerMemberDataHooks(ctx: AppContext): void {
       AstroReport.deleteMany({ $or: [{ userId }, { memberIds: userId }] }),
       CallLog.deleteMany({ initiatedBy: userId }),
     ]);
+  });
+
+  // Everything else that is only about this member: inbox, devices, feedback, reading progress, WhatsApp consent
+  // record and support conversations (including files they attached). Reports and ledgers stay as legal evidence.
+  registerPurgeHook(async (userId) => {
+    const tickets = await Ticket.find({ userId }).select('_id').lean();
+    const files = (await TicketMessage.find({ ticketId: { $in: tickets.map((t) => t._id) }, 'attachments.0': { $exists: true } }).select('attachments').lean()).flatMap((m) => (m.attachments ?? []).map((a) => a.key));
+    await Promise.all(files.filter(Boolean).map((k) => ctx.storage.delete('documents', k as string).catch(() => undefined)));
+    await Promise.all([
+      Notification.deleteMany({ userId }),
+      Delivery.deleteMany({ userId }),
+      PushSubscription.deleteMany({ userId }),
+      IntroFeedback.deleteMany({ userId }),
+      CheckinMarker.deleteMany({ userId }),
+      GuideProgress.deleteMany({ userId }),
+      WhatsAppOptIn.deleteMany({ userId }),
+      SavedFilter.deleteMany({ userId }),
+      TicketMessage.deleteMany({ ticketId: { $in: tickets.map((t) => t._id) } }),
+      Ticket.deleteMany({ userId }),
+    ]);
+  });
+
+  registerExportCollector('guideProgress', async (userId) => (await GuideProgress.find({ userId }).select('slug positionSec speed completed').lean()).map((g) => ({ slug: g.slug, positionSec: g.positionSec, speed: g.speed, completed: g.completed })));
+  registerExportCollector('feedback', async (userId) => (await IntroFeedback.find({ userId }).select('stage rating met tags note createdAt').lean()).map((f) => ({ stage: f.stage, rating: f.rating ?? null, met: f.met ?? null, tags: f.tags, note: f.note ?? null, at: f.createdAt })));
+  registerExportCollector('support', async (userId) => {
+    const tickets = await Ticket.find({ userId }).lean();
+    const out = [];
+    for (const t of tickets) {
+      const msgs = await TicketMessage.find({ ticketId: t._id, internal: false }).sort({ _id: 1 }).lean();
+      out.push({ number: t.number, subject: t.subject, category: t.category, status: t.status, messages: msgs.map((m) => ({ author: m.author, body: m.body, at: m.createdAt })) });
+    }
+    return out;
   });
 
   registerExportCollector('profile', async (userId) => {

@@ -16,7 +16,9 @@ import { MemoryMailer } from '../src/lib/mailer';
 import { hashPassword } from '../src/lib/passwords';
 import { MemorySms } from '../src/lib/sms';
 import { Consent } from '../src/models/auth';
-import { User } from '../src/models/core';
+import { Outbox, User } from '../src/models/core';
+import { Message, MessageThread } from '../src/models/social';
+import { sendMessageDigests } from '../src/services/digest';
 import { Introduction } from '../src/models/matching';
 import { Delivery, Notification, PushSubscription } from '../src/models/notifications';
 import { dispatchEvent, sendDueDeliveries, unsubscribeToken } from '../src/services/notifications';
@@ -93,6 +95,10 @@ async function member(t: T, over: Record<string, unknown> = {}) {
 
 const released = (userId: string, introductionId = 'a'.repeat(24)) => ({ userId, introductionId });
 
+const drain = async (t: T) => {
+  for (const e of await Outbox.find({ eventType: 'message.digest' }).lean()) await dispatchEvent(t.ctx, e.eventType, e.payload as Record<string, unknown>, String(e._id));
+};
+
 describe('dispatch', () => {
   it('writes an in-app note and emails by default, with no private detail in either', async () => {
     const t = setup();
@@ -108,6 +114,25 @@ describe('dispatch', () => {
     expect(mail.subject).toBe('A new introduction is waiting for you');
     expect(mail.headers?.['List-Unsubscribe']).toContain('/unsubscribe?t=');
     expect(mail.html).toContain('/introductions/');
+    expect(mail.html).toContain('Chosen for you'); // the introduction template, not the generic notice
+  });
+
+  it('sends one unread-message digest a day with a count and no message text', async () => {
+    const t = setup();
+    const a = await member(t);
+    // Message emails are off by default, so the digest only goes to members who turned them on.
+    const b = await member(t, { notificationPrefs: { ...NO_QUIET, channels: { messages: { email: true } } } });
+    const thread = await MessageThread.create({ introductionId: new mongoose.Types.ObjectId(), members: [a.id, b.id], lastMessageAt: new Date(Date.now() - 3 * 3_600_000) });
+    await Message.create([{ threadId: thread._id, senderId: a.id, body: 'secret words one', clientId: 'c1', createdAt: new Date(Date.now() - 3 * 3_600_000) }, { threadId: thread._id, senderId: a.id, body: 'secret words two', clientId: 'c2', createdAt: new Date(Date.now() - 3 * 3_600_000) }]);
+    expect(await sendMessageDigests()).toBe(1);
+    await drain(t);
+    const mail = t.mailer.last(b.email)!;
+    expect(mail.html).toContain('2 unread');
+    expect(mail.html).not.toContain('secret words');
+    expect(t.mailer.last(a.email)).toBeUndefined();
+    await sendMessageDigests();
+    await drain(t);
+    expect(t.mailer.sent.filter((m) => m.to === b.email)).toHaveLength(1);
   });
 
   it('is idempotent when an event is delivered twice', async () => {

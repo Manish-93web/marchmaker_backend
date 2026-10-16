@@ -94,6 +94,16 @@ export const NOTIFICATION_SPECS: Record<string, NotificationSpec> = {
       url: `/messages/${s(p.threadId)}`,
     }),
   },
+  'message.digest': {
+    category: 'messages',
+    only: ['email'],
+    sourceId: (p) => `digest:${s(p.userId)}:${s(p.day)}`,
+    copy: (p) => ({
+      title: 'You have messages waiting',
+      body: `${s(p.count)} unread message${Number(p.count) === 1 ? '' : 's'} are waiting for you. Replying only takes a moment.`,
+      url: '/messages',
+    }),
+  },
   'verification.approved': {
     category: 'verification',
     sourceId: (p) => s(p.verificationId),

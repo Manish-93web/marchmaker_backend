@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { Request } from 'express';
+import { z } from 'zod';
 import { guideAllowed, type GuideInput, type Role } from '@marchmaker/shared';
 import type { AppContext } from '../context';
 import { audit } from '../lib/audit';
 import { AppError, conflict, notFound } from '../lib/errors';
-import { Guide } from '../models/content';
+import { Guide, GuideProgress } from '../models/content';
 import { User } from '../models/core';
 
 interface Actor {
@@ -38,6 +39,24 @@ export async function read(slug: string, userId?: string) {
     audioSeconds: g.audioSeconds ?? null,
     publishedAt: g.publishedAt ?? null,
   };
+}
+
+export const guideProgressSchema = z.object({
+  positionSec: z.number().min(0).max(86_400).default(0),
+  scrollPct: z.number().min(0).max(100).default(0),
+  speed: z.number().min(0.5).max(2).default(1),
+  completed: z.boolean().default(false),
+});
+
+export async function getProgress(userId: string, slug: string) {
+  const p = await GuideProgress.findOne({ userId, slug }).lean();
+  return { positionSec: p?.positionSec ?? 0, scrollPct: p?.scrollPct ?? 0, speed: p?.speed ?? 1, completed: p?.completed ?? false };
+}
+
+export async function saveProgress(userId: string, slug: string, input: z.infer<typeof guideProgressSchema>) {
+  if (!(await Guide.exists({ slug, published: true }))) throw notFound();
+  await GuideProgress.updateOne({ userId, slug }, { $set: input }, { upsert: true });
+  return input;
 }
 
 export async function audioUrl(ctx: AppContext, slug: string, userId?: string) {

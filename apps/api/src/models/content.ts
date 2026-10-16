@@ -68,6 +68,20 @@ const guideSchema = new Schema(
   base,
 );
 
+/** Where a member got to in a guide, so audio and reading resume on any device. */
+const guideProgressSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, required: true },
+    slug: { type: String, required: true },
+    positionSec: { type: Number, default: 0, min: 0 },
+    scrollPct: { type: Number, default: 0, min: 0, max: 100 },
+    speed: { type: Number, default: 1, min: 0.5, max: 2 },
+    completed: { type: Boolean, default: false },
+  },
+  base,
+);
+guideProgressSchema.index({ userId: 1, slug: 1 }, { unique: true });
+
 const contactMessageSchema = new Schema(
   {
     schemaVersion,
@@ -84,4 +98,5 @@ const contactMessageSchema = new Schema(
 export const Plan = model('Plan', planSchema);
 export const SuccessStory = model('SuccessStory', successStorySchema);
 export const Guide = model('Guide', guideSchema);
+export const GuideProgress = model('GuideProgress', guideProgressSchema);
 export const ContactMessage = model('ContactMessage', contactMessageSchema);

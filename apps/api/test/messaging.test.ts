@@ -263,7 +263,7 @@ describe('WhatsApp templates and OTP', () => {
     const t = setup();
     const s = await staff(t);
     const first = (await s.get('/admin/whatsapp/templates').expect(200)).body.items;
-    expect(first.map((x: { name: string }) => x.name)).toEqual(['mm_notification', 'mm_otp']);
+    expect(first.map((x: { name: string }) => x.name)).toEqual(['mm_notification', 'mm_oncall_alert', 'mm_otp']);
     await s.put('/admin/whatsapp/templates').send({ name: 'mm_otp', language: 'en', category: 'authentication', variables: 1, approvalStatus: 'approved', body: '{{1}}', purpose: 'otp' }).expect(200);
     expect((await WhatsAppTemplate.findOne({ name: 'mm_otp' }).lean())!.approvalStatus).toBe('approved');
     await s.put('/admin/whatsapp/templates').send({ name: 'Bad Name', variables: 1, approvalStatus: 'approved' }).expect(422);

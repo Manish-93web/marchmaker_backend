@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { renderNotice } from '@marchmaker/email';
+import { renderEventEmail, renderNotice } from '@marchmaker/email';
 import {
   NOTIFICATION_SPECS,
   decideChannels,
@@ -174,12 +174,11 @@ async function deliverOne(ctx: AppContext, d: InstanceType<typeof Delivery>) {
     if (!user.email) return { ok: false as const, error: 'no_email', final: true };
     const critical = NOTIFICATION_SPECS[n.type]?.critical === true;
     const unsub = `${ctx.env.APP_URL}/unsubscribe?t=${unsubscribeToken(ctx, sid(d.userId), n.category)}`;
-    const mail = await renderNotice({
-      subject: n.title,
-      preview: n.body,
-      heading: n.title,
-      paragraphs: [n.body],
-      cta: { label: 'Open Marchmaker', url },
+    const mail = await renderEventEmail(n.type, {
+      title: n.title,
+      body: n.body,
+      url,
+      detail: n.type === 'message.digest' ? `${n.body.match(/\d+/)?.[0] ?? ''} unread` : undefined,
       ...(critical ? {} : { unsubscribeUrl: unsub }),
     });
     const sent = await ctx.mailer.send({

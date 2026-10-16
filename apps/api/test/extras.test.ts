@@ -126,6 +126,18 @@ describe('feature flags', () => {
 describe('e-guides', () => {
   beforeEach(() => flag('e_guides'));
 
+  it('remembers where a member got to, per guide, and rejects nonsense values', async () => {
+    const t = setup();
+    await Guide.create({ slug: 'first-call', title: 'First call', published: true, bodyMarkdown: 'x', access: 'free', audioKey: 'guides/first-call/a.mp3' });
+    const m = await person(t);
+    expect((await m.get('/guide-progress/first-call').expect(200)).body).toEqual({ positionSec: 0, scrollPct: 0, speed: 1, completed: false });
+    await m.put('/guide-progress/first-call').send({ positionSec: 95, speed: 1.5 }).expect(200);
+    expect((await m.get('/guide-progress/first-call').expect(200)).body).toMatchObject({ positionSec: 95, speed: 1.5 });
+    await m.put('/guide-progress/first-call').send({ speed: 5 }).expect(422);
+    await m.put('/guide-progress/missing').send({ positionSec: 1 }).expect(404);
+    await request(t.app).get('/api/v1/guide-progress/first-call').expect(401);
+  });
+
   it('gives free guides to everyone and premium ones only to premium members, with the audio gated the same way', async () => {
     const t = setup();
     await Guide.create({ slug: 'free-one', title: 'Free', summary: 'Open to all', published: true, bodyMarkdown: 'Body A', access: 'free', audioKey: 'guides/free-one/a.mp3', audioSeconds: 120 });
@@ -264,6 +276,7 @@ describe('astrology', () => {
     const report = (await m.get('/astrology/report').expect(200)).body;
     expect(report).toMatchObject({ kind: 'kundli', sample: true });
     expect(report.chart.moonSign).toBeTruthy();
+    expect(['yes', 'partial', 'no', 'unknown']).toContain(report.chart.manglik);
 
     // Withdrawing consent stops it straight away.
     await Consent.create({ userId: m.id, purpose: 'astrology', granted: false });
@@ -283,6 +296,8 @@ describe('astrology', () => {
     const first = (await a.get(`/introductions/${id}/astrology`).expect(200)).body;
     expect(first).toMatchObject({ kind: 'match', sample: true });
     expect(first.result.points).toBeLessThanOrEqual(36);
+    expect(first.result.gunaVerdict).toBeTruthy();
+    expect(first.result.manglik).toHaveProperty('balanced');
     const again = (await b.get(`/introductions/${id}/astrology`).expect(200)).body;
     expect(again.result).toEqual(first.result);
     expect(await AstroReport.countDocuments({ kind: 'match' })).toBe(1);
