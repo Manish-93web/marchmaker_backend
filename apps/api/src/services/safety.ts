@@ -99,6 +99,7 @@ export async function report(
     after: { category: input.category, severity },
   });
   // Safety threats alert the on-call team straight away, not through the normal queue.
+  await emit('report.received', { userId: me, reportId: sid(r._id) });
   if (severity === 'critical') await emit('safety.critical_report', { reportId: sid(r._id), category: input.category });
   await emit('report.created', { reportId: sid(r._id), severity });
   return { id: sid(r._id), status: 'open' as const, severity };

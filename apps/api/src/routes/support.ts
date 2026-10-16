@@ -69,7 +69,7 @@ export function supportRouter(ctx: AppContext): Router {
     }),
   );
   r.post(
-    '/support/tickets/:id/reply',
+    ['/support/tickets/:id/reply', '/support/tickets/:id/messages'],
     validate({ params: idParams, body: ticketReplySchema }),
     asyncHandler(async (req, res) => {
       res.status(201).json(await support.replyMine(ctx, authedUser(req).userId, String(req.params.id), req.body.body, req.body.attachments));
@@ -83,7 +83,7 @@ export function supportRouter(ctx: AppContext): Router {
     }),
   );
   r.post(
-    '/support/tickets/:id/rating',
+    ['/support/tickets/:id/rating', '/support/tickets/:id/rate'],
     validate({ params: idParams, body: ticketRatingSchema }),
     asyncHandler(async (req, res) => {
       res.json(await support.rateMine(authedUser(req).userId, String(req.params.id), req.body));

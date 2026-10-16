@@ -356,6 +356,23 @@ describe('subscriptions', () => {
     await m.post('/billing/change-plan').send({ planCode: 'essential', interval: 'monthly' }).expect(200);
   });
 
+  it('announces a renewal, a scheduled cancellation and, three days out, that the plan ends', async () => {
+    const t = setup();
+    const m = await member(t);
+    const { entity, id } = await activeSubscription(t, m);
+    await send(t, 'subscription.charged', { subscription: entity, payload: undefined, payment: t.mock.paymentEntity({ id: 'pay_first', subscriptionId: id, amount: 99_900 }) }).expect(200);
+    expect(await Outbox_count('subscription.renewed')).toBe(0); // the first charge is a start, not a renewal
+    await send(t, 'subscription.charged', { subscription: entity, payment: t.mock.paymentEntity({ id: 'pay_second', subscriptionId: id, amount: 99_900 }) }).expect(200);
+    expect(await Outbox_count('subscription.renewed')).toBe(1);
+
+    await m.post('/billing/cancel').send({}).expect(200);
+    expect(await Outbox_count('subscription.cancel_scheduled')).toBe(1);
+    const end = (await Subscription.findOne({ userId: m.id }).lean())!.currentPeriodEnd!;
+    await lapseAccess(new Date(end.getTime() - 2 * 86_400_000));
+    await lapseAccess(new Date(end.getTime() - 86_400_000)); // never twice
+    expect(await Outbox_count('subscription.expiring')).toBe(1);
+  });
+
   it('pauses billing but keeps access to the end of the paid period, then resumes', async () => {
     const t = setup();
     const m = await member(t);

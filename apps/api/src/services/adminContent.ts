@@ -2,14 +2,14 @@ import type { Request } from 'express';
 import { Types } from 'mongoose';
 import { LEGAL_TYPES, type LegalType, type Role } from '@marchmaker/shared';
 import { z } from 'zod';
-import { audit } from '../lib/audit';
+import { audit, emit } from '../lib/audit';
 import { AppError, conflict, notFound } from '../lib/errors';
 import { LegalDocument } from '../models/auth';
 import { Faq, SavedFilter } from '../models/cms';
 import { Payment, Subscription } from '../models/billing';
 import { Introduction } from '../models/matching';
 import { User } from '../models/core';
-import { Report, CreditLedger } from '../models/social';
+import { CreditLedger, Message, MessageThread, Report } from '../models/social';
 import { Ticket } from '../models/safety';
 import { WalletLedger } from '../models/referrals';
 import { Invoice } from '../models/billing';
@@ -61,6 +61,7 @@ export async function publishLegal(req: Request, input: z.infer<typeof legalVers
   const effectiveDate = input.effectiveDate ?? new Date();
   if (effectiveDate.getTime() < Date.now() - 60_000) throw new AppError(422, 'VALIDATION_ERROR', 'The effective date cannot be in the past');
   await LegalDocument.create({ ...input, version, effectiveDate, publishedBy: actor.userId });
+  if (input.material) await emit('legal.updated', { docType: input.type, version, docLabel: input.title });
   await audit(req, {
     action: 'legal.version_published',
     actorId: actor.userId,
@@ -204,4 +205,43 @@ export async function memberSafety(userId: string) {
 export async function memberTickets(userId: string) {
   const rows = await Ticket.find({ userId }).sort({ lastMessageAt: -1 }).limit(25).lean();
   return { items: rows.map((t) => ({ id: sid(t._id), number: t.number, subject: t.subject, category: t.category, status: t.status, at: t.lastMessageAt })) };
+}
+
+export async function memberIntroductions(userId: string) {
+  const rows = await Introduction.find({ 'members.userId': userId }).sort({ releasedAt: -1 }).limit(50).lean();
+  const others = rows.map((r) => r.members.find((m) => sid(m.userId) !== userId)?.userId).filter(Boolean);
+  const names = new Map((await User.find({ _id: { $in: others } }).select('firstName').lean()).map((u) => [sid(u._id), u.firstName]));
+  return {
+    items: rows.map((r) => {
+      const me = r.members.find((m) => sid(m.userId) === userId);
+      const other = r.members.find((m) => sid(m.userId) !== userId);
+      return {
+        id: sid(r._id),
+        with: { id: other ? sid(other.userId) : null, name: (other && names.get(sid(other.userId))) ?? 'Member' },
+        state: r.state,
+        myStatus: me?.status ?? null,
+        theirStatus: other?.status ?? null,
+        releasedAt: r.releasedAt,
+        unlockedAt: r.unlockedAt ?? null,
+        closedReason: r.closedReason ?? null,
+      };
+    }),
+  };
+}
+
+/**
+ * Private messages are readable only when this member is part of a report, only by staff who may read reported messages,
+ * and every view is written to the audit log. Nothing here is available for a member nobody has reported or who reported nobody.
+ */
+export async function memberMessages(req: Request, userId: string, actor: Actor) {
+  const reports = await Report.find({ $or: [{ reporterId: userId }, { reportedId: userId }], introductionId: { $exists: true } }).select('introductionId').lean();
+  if (!reports.length) return { available: false as const, threads: [] };
+  const threads = await MessageThread.find({ introductionId: { $in: reports.flatMap((r) => (r.introductionId ? [r.introductionId] : [])) }, members: userId }).lean();
+  const out = [];
+  for (const t of threads) {
+    const msgs = await Message.find({ threadId: t._id }).sort({ _id: -1 }).limit(100).lean();
+    out.push({ threadId: sid(t._id), messages: msgs.reverse().map((m) => ({ id: sid(m._id), mine: sid(m.senderId) === userId, body: m.body, at: m.createdAt })) });
+  }
+  await audit(req, { action: 'member.messages_viewed', actorId: actor.userId, actorRoles: actor.roles, subjectType: 'user', subjectId: userId, after: { threads: out.length } });
+  return { available: true as const, threads: out };
 }

@@ -53,7 +53,7 @@ export const NOTIFICATION_SPECS: Record<string, NotificationSpec> = {
     sourceId: (p) => `${s(p.introductionId)}:${s(p.userId)}`,
     copy: (p) => ({
       title: 'You both said yes',
-      body: 'You can now message each other. Start with something kind.',
+      body: 'You can now message each other, and their first note is waiting for you. Start with something kind.',
       url: `/introductions/${s(p.introductionId)}`,
     }),
   },
@@ -238,6 +238,73 @@ export const NOTIFICATION_SPECS: Record<string, NotificationSpec> = {
       title: 'Did you get to meet?',
       body: 'Three weeks on, we would love to know whether the two of you met. It takes ten seconds and stays private.',
       url: `/introductions/${s(p.introductionId)}?feedback=meeting`,
+    }),
+  },
+  'user.email_verified': {
+    category: 'verification',
+    only: ['in_app', 'email'],
+    sourceId: (p) => s(p.userId),
+    copy: () => ({
+      title: 'Welcome to Marchmaker',
+      body: 'Your email is confirmed. Build your profile at your own pace: everything saves automatically.',
+      url: '/onboarding',
+    }),
+  },
+  'subscription.renewed': {
+    category: 'billing',
+    sourceId: (p) => s(p.paymentId),
+    copy: (p) => ({
+      title: 'Your subscription renewed',
+      body: `Your ${s(p.planCode)} plan has renewed and this cycle's credits are in your account. Your invoice is on its way.`,
+      url: '/billing',
+    }),
+  },
+  'subscription.cancel_scheduled': {
+    category: 'billing',
+    sourceId: (p) => `${s(p.userId)}:${s(p.endsAt)}`,
+    copy: (p) => ({
+      title: 'Your subscription will end',
+      body: `You cancelled, so your plan ends on ${s(p.endsLabel)}. You keep everything until then, and you can change your mind from Billing.`,
+      url: '/billing',
+    }),
+  },
+  'subscription.expiring': {
+    category: 'billing',
+    sourceId: (p) => `${s(p.userId)}:${s(p.endsAt)}`,
+    copy: (p) => ({
+      title: 'Your plan ends soon',
+      body: `Your plan ends on ${s(p.endsLabel)}. Credits you have not used stay until they expire.`,
+      url: '/billing',
+    }),
+  },
+  'legal.updated': {
+    category: 'safety',
+    critical: true,
+    sourceId: (p) => `${s(p.docType)}:${s(p.version)}`,
+    copy: (p) => ({
+      title: 'We updated our terms',
+      body: `We updated our ${s(p.docLabel)}. Please read and accept the new version to keep using Marchmaker.`,
+      url: '/dashboard',
+    }),
+  },
+  'report.received': {
+    category: 'safety',
+    critical: true,
+    sourceId: (p) => s(p.reportId),
+    copy: () => ({
+      title: 'We received your report',
+      body: 'Thank you. Our safety team will look into it, and serious concerns are read first. The other person is never told who reported.',
+      url: '/support',
+    }),
+  },
+  'account.deletion_scheduled': {
+    category: 'safety',
+    critical: true,
+    sourceId: (p) => `${s(p.userId)}:${s(p.purgeAt)}`,
+    copy: (p) => ({
+      title: 'Your account is scheduled for deletion',
+      body: `Your account and data will be permanently erased on ${s(p.purgeLabel)}. You can restore it any time before then from Settings.`,
+      url: '/settings',
     }),
   },
   'story.decided': {

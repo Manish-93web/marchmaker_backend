@@ -375,6 +375,7 @@ export async function handleSubscriptionCharge(ctx: AppContext, se: SubEntity, p
   if (!sub) return 'unknown';
   const entry = await catalogEntry(sub.planCode);
   const interval = sub.interval as BillingInterval;
+  const renewal = Boolean(await Payment.exists({ userId: sub.userId, razorpaySubscriptionId: se.id }));
   const start = toDate(se.current_start) ?? new Date();
   const end = toDate(se.current_end) ?? addMonths(start, MONTHS[interval]);
   try {
@@ -437,6 +438,7 @@ export async function handleSubscriptionCharge(ctx: AppContext, se: SubEntity, p
       await Payment.updateOne({ _id: pay!._id }, { $set: { invoiceId: inv._id } }, { session });
       await relay(session, 'invoice.created', { invoiceId: String(inv._id), userId: String(fresh.userId) });
       await relay(session, 'subscription.charged', { userId: String(fresh.userId), planCode: fresh.planCode, interval });
+      if (renewal) await relay(session, 'subscription.renewed', { userId: String(fresh.userId), planCode: fresh.planCode, paymentId: String(pay!._id) });
     });
     await referrals.onPayment(sub.userId, pe.id, pe.amount).catch((err) => ctx.log.warn({ err }, 'referral qualification failed'));
     return 'paid';
@@ -776,6 +778,15 @@ export async function lapseAccess(now = new Date()) {
       await Outbox.create({ eventType: 'subscription.lapsed', payload: { userId: String(s.userId), planCode: s.planCode } });
     }
   }
+  // Three days before a cancelled plan ends, remind once.
+  for (const s of await Subscription.find({ cancelAtPeriodEnd: true, status: { $in: ['active', 'pending'] }, currentPeriodEnd: { $gt: now, $lte: addDays(now, 3) }, expiryNoticeAt: { $exists: false } }).limit(500)) {
+    const marked = await Subscription.updateOne({ _id: s._id, expiryNoticeAt: { $exists: false } }, { $set: { expiryNoticeAt: now } });
+    if (!marked.modifiedCount || !s.currentPeriodEnd) continue;
+    await Outbox.create({
+      eventType: 'subscription.expiring',
+      payload: { userId: String(s.userId), endsAt: s.currentPeriodEnd.toISOString(), endsLabel: s.currentPeriodEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }) },
+    });
+  }
   const expired = await credits.expireDueLots(now);
   return { downgraded, expired };
 }
@@ -834,6 +845,9 @@ export async function cancelAtPeriodEnd(ctx: AppContext, userId: string) {
   await needProvider(ctx).cancelSubscription(sub.razorpaySubscriptionId, true);
   sub.cancelAtPeriodEnd = true;
   await sub.save();
+  if (sub.currentPeriodEnd) {
+    await Outbox.create({ eventType: 'subscription.cancel_scheduled', payload: { userId, endsAt: sub.currentPeriodEnd.toISOString(), endsLabel: sub.currentPeriodEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })  } });
+  }
   return { endsAt: sub.currentPeriodEnd ?? null };
 }
 

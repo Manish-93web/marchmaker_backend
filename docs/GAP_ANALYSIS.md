@@ -75,28 +75,27 @@ These cannot be completed on a development machine. Each needs something from th
 
 ## E. Second audit (after closure) against the same prompt
 
-Re-read the full prompt and checked it against the code: every `/api/v1` route (generated from the router), the notification catalog, admin screens, UI kit, docs and infrastructure files. Items A, B and C above stand. This pass found the following that were not listed before.
+Re-read the full prompt and checked it against the code: every `/api/v1` route (generated from the router), the notification catalog, admin screens, UI kit, docs and infrastructure files. The items found were then worked through.
 
-### Pending
+### Closed
 
-| ID | Spec | Gap | Pri |
-|---|---|---|---|
-| E1 | M15 / §13 | **Email events missing from the catalog and the matrix:** welcome, subscription renewed / cancelled / expiring, legal-document update, first note received, "report received" acknowledgement to the reporter, account deletion scheduled. (Verify, OTP-fallback, export-ready and deletion-completed are sent outside the catalog.) "Introduction accepted" is excluded on purpose (D-039) but the spec lists it | P1 |
-| E2 | §11.3 | Member detail has no **Introductions**, **Messages** (moderator-only, audited) or **Audit** tab. Reports, support, credits, wallet, payments, notes exist | P1 |
+| ID | What changed |
+|---|---|
+| E1 | Added to the catalog and the matrix: **welcome**, **subscription renewed**, **cancellation scheduled**, **plan ending in three days** (sent once), **legal document updated** (fanned out to every active member, once each), **report received** (to the reporter) and **account deletion scheduled**. The first note is announced in the unlock message; "introduction accepted" stays out by decision D-039 |
+| E2 | Member detail now has **Introductions**, **Messages** (only for a reported pair, needs the read-reported-messages permission, every view audited) and **Audit** tabs |
+| E3 | Spec-named paths now answer alongside the original ones: `/billing/invoices/:id/pdf`, `/push/subscribe`, `/astrology/profile`, `/astrology/introductions/:id`, `/support/tickets/:id/messages` and `/rate`, `/wallet/ledger`. (`/auth/password/forgot` and `/reset` already matched; the earlier note was wrong.) Still different: `/feedback/introductions` and `/notifications/read-all`, `/guide-progress` |
+| E6 | Already done: right-click is blocked on revealed photos (the earlier note was wrong) |
 
-### Partial
+### Still partial (all P2)
 
-| ID | Spec | What exists | Pri |
-|---|---|---|---|
-| E3 | §9 | Same behaviour, **different path names**: `/auth/forgot-password` and `/auth/reset-password` (spec `/auth/password/...`), `/feedback/introductions` (spec `/introductions/:id/feedback`), `/support/tickets/:id/reply` and `/rating` (spec `/messages` and `/rate`), `/billing/invoices/:id/download` (spec `/pdf`), `/notifications/read-all` and `/:id/read` (spec `/read`), `/notifications/push` (spec `/push/subscribe`), `/guide-progress/:slug`, `/astrology/details` and `/introductions/:id/astrology`. No separate `/wallet/ledger` | P2 |
-| E4 | §2 / OpenAPI | The generated document omits the Resend, WhatsApp and call webhooks (they are mounted outside the versioned router) | P2 |
-| E5 | §12 | Light/dark/system theme is saved **per browser**, not per member account | P2 |
-| E6 | M9 | Revealed photos have a watermark and dragging is disabled; **right-click is not blocked** (spec asks, as a deterrent only) | P2 |
-| E7 | §12 components | Slider/RangeSlider, Stepper, IntroductionCard, BlurredPhoto, PhotoUploader, CameraCapture, Toast, DataTable, ConsentBanner and Banner variants are in the apps, not the shared library or Storybook | P2 |
-| E8 | §2 | Spec names `vite-plugin-pwa` (Workbox) and `vite-ssg` / `vite-plugin-prerender`; a hand-written service worker and a custom prerender script are used (D-079) | P2 |
-| E9 | §8 | Several collection names differ from the spec (`reports` doubles as moderation cases, tickets and ticket messages are `tickets` / `ticketmessages`, `callLogs`, `astroProfiles`) | P2 |
-| E10 | S7 / §16 | No PostHog funnels or `POSTHOG_KEY`; replaced by first-party analytics and an admin Insights page (decision recorded) | P2 |
+| ID | Gap |
+|---|---|
+| E3 | The three paths named above |
+| E4 | The generated OpenAPI document omits the Resend, WhatsApp and call webhooks (mounted outside the versioned router) |
+| E5 | Light/dark/system theme is saved per browser, not per member account |
+| E7 | Slider/RangeSlider, Stepper, IntroductionCard, BlurredPhoto, PhotoUploader, CameraCapture, Toast, DataTable and ConsentBanner live in the apps, not the shared library or Storybook |
+| E8 | Spec names `vite-plugin-pwa` (Workbox) and `vite-ssg`; a hand-written service worker and a custom prerender script are used (D-079) |
+| E9 | Several collection names differ from section 8 (`callLogs`, `astroProfiles`, `reports` doubling as moderation cases) |
+| E10 | No PostHog funnels or `POSTHOG_KEY`; first-party analytics and the admin Insights page are used instead |
 
-### How far this pass went
-
-Checked directly: routes, notification catalog, admin member tabs, UI kit contents, docs list, CSP nonce, admin session limits, Mailpit in compose, Mermaid diagram. **Not re-run line by line:** every sentence of M3 to M12 behaviour (profile conflict dialog, review safeguards, moderation actions and so on); those were verified by their phase tests earlier. If a specific section matters most, name it and it can be audited in depth.
+Not re-run line by line in this pass: every sentence of M3 to M12 behaviour (those were verified by their phase tests earlier).

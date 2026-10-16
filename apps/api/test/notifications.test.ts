@@ -352,3 +352,31 @@ describe('live stream', () => {
     await new Promise((resolve) => setTimeout(resolve, 400));
   });
 });
+
+describe('lifecycle events from the spec list', () => {
+  it('sends a welcome, a report acknowledgement and a deletion notice, each neutral and once', async () => {
+    const t = setup();
+    const m = await member(t);
+    await dispatchEvent(t.ctx, 'user.email_verified', { userId: m.id }, 'e1');
+    await dispatchEvent(t.ctx, 'user.email_verified', { userId: m.id }, 'e1-retry');
+    await dispatchEvent(t.ctx, 'report.received', { userId: m.id, reportId: 'r1' }, 'e2');
+    await dispatchEvent(t.ctx, 'account.deletion_scheduled', { userId: m.id, purgeAt: '2026-11-01T00:00:00Z', purgeLabel: '1 November 2026' }, 'e3');
+    const titles = (await Notification.find({ userId: m.id }).lean()).map((n) => n.title).sort();
+    expect(titles).toEqual(['We received your report', 'Welcome to Marchmaker', 'Your account is scheduled for deletion']);
+    expect(t.mailer.sent.some((x) => x.html.includes('1 November 2026'))).toBe(true);
+  });
+
+  it('tells every active member when a material legal document changes, once each', async () => {
+    const t = setup();
+    const a = await member(t);
+    const b = await member(t);
+    const gone = await member(t);
+    await User.updateOne({ _id: gone.id }, { $set: { status: 'banned' } });
+    const payload = { docType: 'terms', version: 'v2', docLabel: 'Terms of use' };
+    expect(await dispatchEvent(t.ctx, 'legal.updated', payload, 'l1')).toBe(2);
+    expect(await dispatchEvent(t.ctx, 'legal.updated', payload, 'l1-retry')).toBe(0);
+    expect(await Notification.countDocuments({ type: 'legal.updated' })).toBe(2);
+    expect(await Notification.countDocuments({ userId: gone.id })).toBe(0);
+    expect(a.id).not.toBe(b.id);
+  });
+});

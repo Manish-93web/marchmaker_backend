@@ -10,7 +10,7 @@ import { Notification } from '../models/notifications';
 import * as account from '../services/account';
 import * as svc from '../services/notifications';
 
-export const NOTIFICATION_PREFIXES = ['/notifications'];
+export const NOTIFICATION_PREFIXES = ['/notifications', '/push'];
 
 const id24 = z.string().regex(/^[a-f\d]{24}$/i);
 const pushSub = z.object({
@@ -80,7 +80,7 @@ export function notificationsRouter(ctx: AppContext): Router {
   );
 
   r.post(
-    '/notifications/push',
+    ['/notifications/push', '/push/subscribe'],
     validate({ body: pushSub }),
     asyncHandler(async (req, res) => {
       res.status(201).json(await svc.subscribePush(ctx, authedUser(req).userId, req.body, req.get('user-agent')));

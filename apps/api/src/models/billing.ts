@@ -97,6 +97,7 @@ const subscriptionSchema = new Schema(
     currentPeriodEnd: Date,
     cancelAtPeriodEnd: { type: Boolean, default: false },
     graceUntil: Date,
+    expiryNoticeAt: Date,
     pendingChange: { planCode: String, interval: String, at: Date },
     shortUrl: String,
     couponCode: String,

@@ -83,6 +83,18 @@ export async function dispatchEvent(ctx: AppContext, eventType: string, payload:
   }
   const spec = NOTIFICATION_SPECS[eventType];
   if (!spec) return 0;
+  if (eventType === 'legal.updated') {
+    // One event for everyone: fan out in pages. Each member's notification is keyed by document and version, so a retry never repeats.
+    let n = 0;
+    let after: unknown;
+    for (;;) {
+      const page = await User.find({ roles: 'member', status: 'active', ...(after ? { _id: { $gt: after } } : {}) }).sort({ _id: 1 }).limit(500).select('_id').lean();
+      if (!page.length) break;
+      for (const u of page) if (await notifyUser(ctx, sid(u._id), eventType, spec, { ...payload, userId: sid(u._id) }, eventId)) n++;
+      after = page[page.length - 1]!._id;
+    }
+    return n;
+  }
   let n = 0;
   for (const userId of await recipientsFor(eventType, payload)) {
     if (await notifyUser(ctx, userId, eventType, spec, { ...payload, userId }, eventId)) n++;

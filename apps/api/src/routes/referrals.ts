@@ -29,7 +29,7 @@ export function referralsRouter(ctx: AppContext): Router {
     }),
   );
   r.get(
-    '/wallet',
+    ['/wallet', '/wallet/ledger'],
     asyncHandler(async (req, res) => {
       const userId = authedUser(req).userId;
       const view = await referrals.memberView(ctx, userId);

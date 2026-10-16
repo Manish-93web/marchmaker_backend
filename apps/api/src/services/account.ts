@@ -110,7 +110,7 @@ export async function scheduleDeletion(
   await DataRequest.create({ userId, kind: 'deletion', status: settings.requireApproval ? 'awaiting_approval' : 'pending', expiresAt: when });
   await revokeAllSessions(userId, 'deletion_scheduled', currentSessionId);
   await audit(undefined, { action: 'account.deletion_scheduled', actorId: userId, subjectType: 'user', subjectId: userId });
-  await emit('account.deletion_scheduled', { userId, purgeAt: when.toISOString() });
+  await emit('account.deletion_scheduled', { userId, purgeAt: when.toISOString(), purgeLabel: when.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }) });
   if (user.email) {
     await sendNotice(ctx, user.email, {
       subject: 'Your account is scheduled for deletion',

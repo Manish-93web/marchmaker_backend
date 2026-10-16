@@ -18,6 +18,9 @@ import { MemorySms } from '../src/lib/sms';
 import { LegalDocument } from '../src/models/auth';
 import { Report } from '../src/models/social';
 import { Ticket } from '../src/models/safety';
+import { Introduction } from '../src/models/matching';
+import { Message, MessageThread } from '../src/models/social';
+import { AuditLog } from '../src/models/core';
 import { User } from '../src/models/core';
 
 let mongod: MongoMemoryReplSet;
@@ -156,5 +159,39 @@ describe('SLA alerts', () => {
     expect((await Report.findById(rep._id))?.slaAlertedAt).toBeTruthy();
     const second = await sendSlaAlerts(t.ctx);
     expect(second).toMatchObject({ reports: 0, tickets: 0 });
+  });
+});
+
+describe('member detail: introductions and audited messages', () => {
+  it('lists introductions, and shows messages only for a reported pair, with an audit entry', async () => {
+    const t = setup();
+    const boss = await session(t, ['super_admin']);
+    const support = await session(t, ['support_agent']);
+    const a = await session(t);
+    const b = await session(t);
+    const intro = await Introduction.create({ pairKey: `${a.id}:${b.id}`, members: [{ userId: a.id, status: 'accepted' }, { userId: b.id, status: 'accepted' }], whyText: 'You both want a calm family life.', state: 'mutually_accepted', expiresAt: new Date(Date.now() + 1e9) });
+    const list = (await boss.get(`/admin/members/${a.id}/introductions`).expect(200)).body.items;
+    expect(list[0]).toMatchObject({ state: 'mutually_accepted', myStatus: 'accepted' });
+
+    expect((await boss.get(`/admin/members/${a.id}/messages`).expect(200)).body.available).toBe(false); // nobody reported them
+    const thread = await MessageThread.create({ introductionId: intro._id, members: [a.id, b.id] });
+    await Message.create({ threadId: thread._id, senderId: a.id, body: 'Hello there', clientId: 'x1' });
+    await Report.create({ reporterId: b.id, reportedId: a.id, introductionId: intro._id, category: 'harassment', severity: 'high', slaDueAt: new Date() });
+    const seen = (await boss.get(`/admin/members/${a.id}/messages`).expect(200)).body;
+    expect(seen.threads[0].messages[0]).toMatchObject({ body: 'Hello there', mine: true });
+    expect(await AuditLog.countDocuments({ action: 'member.messages_viewed' })).toBe(1);
+    await support.get(`/admin/members/${a.id}/messages`).expect(403);
+  });
+});
+
+describe('spec-named aliases', () => {
+  it('answers on the names the API specification uses, and still needs a session', async () => {
+    const t = setup();
+    const m = await session(t);
+    expect((await m.get('/wallet/ledger').expect(200)).body).toEqual((await m.get('/wallet').expect(200)).body);
+    await m.post('/push/subscribe').send({}).expect(422); // the route exists and validates
+    await m.put('/astrology/profile').send({}).expect(404); // behind its feature flag, like /astrology/details
+    await request(t.app).get('/api/v1/wallet/ledger').expect(401);
+    await request(t.app).post('/api/v1/push/subscribe').send({}).expect(401);
   });
 });

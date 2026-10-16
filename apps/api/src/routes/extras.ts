@@ -136,7 +136,7 @@ export function extrasRouter(ctx: AppContext): Router {
     }),
   );
   r.put(
-    '/astrology/details',
+    ['/astrology/details', '/astrology/profile'],
     requireFlag('astrology'),
     validate({ body: birthDetailsSchema.extend({ shareWithMatches: z.boolean().default(false) }) }),
     asyncHandler(async (req, res) => {
@@ -159,7 +159,7 @@ export function extrasRouter(ctx: AppContext): Router {
     }),
   );
   r.get(
-    '/introductions/:id/astrology',
+    ['/introductions/:id/astrology', '/astrology/introductions/:id'],
     requireFlag('astrology'),
     validate({ params: idParams }),
     asyncHandler(async (req, res) => {

@@ -98,5 +98,8 @@ export function adminContentRouter(_ctx: AppContext): Router {
   r.get('/members/:id/safety', requirePermission('moderation.view'), memberParam, asyncHandler(async (req, res) => res.set('Cache-Control', 'no-store').json(await svc.memberSafety(String(req.params.id)))));
   r.get('/members/:id/tickets', requirePermission('support.view'), memberParam, asyncHandler(async (req, res) => res.set('Cache-Control', 'no-store').json(await svc.memberTickets(String(req.params.id)))));
 
+  r.get('/members/:id/introductions', requirePermission('introduction.view'), memberParam, asyncHandler(async (req, res) => res.set('Cache-Control', 'no-store').json(await svc.memberIntroductions(String(req.params.id)))));
+  r.get('/members/:id/messages', requirePermission('messages.view_reported'), memberParam, asyncHandler(async (req, res) => res.set('Cache-Control', 'no-store').json(await svc.memberMessages(req, String(req.params.id), actorOf(req)))));
+
   return r;
 }

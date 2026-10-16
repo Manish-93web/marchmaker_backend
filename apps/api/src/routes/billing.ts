@@ -63,7 +63,7 @@ export function billingRouter(ctx: AppContext): Router {
     }),
   );
   r.get(
-    '/billing/invoices/:id/download',
+    ['/billing/invoices/:id/download', '/billing/invoices/:id/pdf'],
     validate({ params: idParams }),
     asyncHandler(async (req, res) => {
       noStore(res).json({ url: await invoicing.downloadUrl(ctx, authedUser(req).userId, String(req.params.id)) });
