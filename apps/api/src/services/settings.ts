@@ -16,6 +16,8 @@ export const matchingSettingsSchema = z
     fairnessAfterDays: z.number().int().min(1).max(180),
     complementaryDimensions: z.array(z.string().max(40)).max(30),
     opennessSatisfiesMustHave: z.boolean(),
+    /** Let bounded nudges learned from member feedback adjust the weights. */
+    useFeedback: z.boolean().optional(),
   })
   .refine((v) => v.weights.preferences + v.weights.assessments + v.weights.plans > 0, {
     path: ['weights'],
@@ -43,8 +45,14 @@ async function read<T>(key: string): Promise<Partial<T> | undefined> {
 }
 
 export async function getMatchingConfig(): Promise<MatchingConfig> {
-  const stored = await read<MatchingConfig>('matching');
-  return { ...DEFAULT_MATCHING_CONFIG, ...stored, weights: { ...DEFAULT_MATCHING_CONFIG.weights, ...stored?.weights } };
+  const stored = await read<MatchingConfig & { useFeedback?: boolean }>('matching');
+  const weights = { ...DEFAULT_MATCHING_CONFIG.weights, ...stored?.weights };
+  if (stored?.useFeedback !== false) {
+    // Bounded nudges learned from member feedback (see feedback.refreshLearnedWeights).
+    const learned = (await Setting.findOne({ key: 'matching_learned' }).lean())?.value as { delta?: Record<string, number> } | undefined;
+    for (const k of ['preferences', 'assessments', 'plans'] as const) weights[k] = Math.max(0.05, weights[k] + (learned?.delta?.[k] ?? 0));
+  }
+  return { ...DEFAULT_MATCHING_CONFIG, ...stored, weights };
 }
 
 export async function getReviewSettings(): Promise<ReviewSettings> {

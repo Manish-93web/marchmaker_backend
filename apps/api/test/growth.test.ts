@@ -17,10 +17,12 @@ import { MemorySms } from '../src/lib/sms';
 import { Payment } from '../src/models/billing';
 import { Consent } from '../src/models/auth';
 import { SuccessStory } from '../src/models/content';
-import { AuditLog, Outbox, StateTransition, User } from '../src/models/core';
+import { AuditLog, Outbox, Setting, StateTransition, User } from '../src/models/core';
 import { ActiveDay, AnalyticsEvent, CheckinMarker, Experiment } from '../src/models/growth';
-import { Introduction } from '../src/models/matching';
-import { sendCheckIns } from '../src/services/feedback';
+import { Introduction, MatchSuggestion } from '../src/models/matching';
+import { MessageThread } from '../src/models/social';
+import { getMatchingConfig } from '../src/services/settings';
+import { refreshLearnedWeights, sendCheckIns } from '../src/services/feedback';
 import { clearMetricsCache } from '../src/services/metrics';
 
 let mongod: MongoMemoryReplSet;
@@ -205,6 +207,45 @@ describe('feedback loop', () => {
     expect(await sendCheckIns()).toBe(0); // never twice
     expect(await CheckinMarker.countDocuments({})).toBe(2);
     expect(await Outbox.countDocuments({ eventType: 'feedback.checkin' })).toBe(2);
+  });
+
+  it('asks for feedback when a conversation is ended, and whether the two met after three weeks', async () => {
+    const t = setup();
+    const a = await person(t);
+    const b = await person(t);
+    const id = await unlocked(a, b, 22);
+    const thread = await MessageThread.create({ introductionId: id, members: [a.id, b.id], status: 'open' });
+    await a.post('/feedback/introductions').send({ introductionId: id, stage: 'closed', rating: 3, tags: [] }).expect(409); // still open
+    await a.post(`/threads/${thread._id}/end`).expect(200);
+    const stages = (await a.get('/feedback/pending').expect(200)).body.items.map((i: { stage: string }) => i.stage).sort();
+    expect(stages).toEqual(['checkin', 'closed', 'meeting']);
+    await a.post('/feedback/introductions').send({ introductionId: id, stage: 'closed', rating: 3, tags: ['slow_to_reply'] }).expect(201);
+    await a.post('/feedback/introductions').send({ introductionId: id, stage: 'meeting' }).expect(422);
+    await a.post('/feedback/introductions').send({ introductionId: id, stage: 'meeting', met: true }).expect(201);
+    expect(await sendCheckIns()).toBeGreaterThan(0);
+    expect(await Outbox.countDocuments({ eventType: 'feedback.meeting' })).toBeGreaterThan(0);
+  });
+
+  it('learns bounded weight shifts only from enough feedback, and can be switched off', async () => {
+    const t = setup();
+    expect((await refreshLearnedWeights()).delta).toEqual({ preferences: 0, assessments: 0, plans: 0 });
+    const a = await person(t);
+    // 40 introductions where a higher "plans" signal means a higher rating.
+    for (let k = 0; k < 40; k++) {
+      const b = await person(t);
+      const plans = (k % 10) / 10;
+      const sug = await MatchSuggestion.create({ pairKey: `s${k}`, memberA: a.id, memberB: b.id, score: 0.7, signals: { preferences: 0.5, assessments: 0.5, plans }, status: 'approved' });
+      const id = await unlocked(a, b, 10);
+      await Introduction.updateOne({ _id: id }, { $set: { suggestionId: sug._id } });
+      await b.post('/feedback/introductions').send({ introductionId: id, rating: 1 + Math.round(plans * 4), tags: [] }).expect(201);
+    }
+    const learned = await refreshLearnedWeights();
+    expect(learned.samples).toBe(40);
+    expect(learned.delta.plans).toBeGreaterThan(0);
+    for (const v of Object.values(learned.delta)) expect(Math.abs(v)).toBeLessThanOrEqual(0.05);
+    expect((await getMatchingConfig()).weights.plans).toBeGreaterThan(0.35);
+    await Setting.updateOne({ key: 'matching' }, { $set: { value: { useFeedback: false } } }, { upsert: true });
+    expect((await getMatchingConfig()).weights.plans).toBe(0.35);
   });
 
   it('offers a gentle suggestion only after a clear pattern, and tells staff the same', async () => {

@@ -19,7 +19,7 @@ import { Invoice, Order, Payment } from '../src/models/billing';
 import { AuditLog, Outbox, Setting, User } from '../src/models/core';
 import { Referral, WalletLedger } from '../src/models/referrals';
 import { reconcile } from '../src/services/billing';
-import { releaseDue } from '../src/services/referrals';
+import { attribute, onPayment, releaseDue } from '../src/services/referrals';
 
 let mongod: MongoMemoryReplSet;
 beforeAll(async () => {
@@ -133,6 +133,34 @@ describe('attribution', () => {
     const second = (await User.findOne({ email: 'second@example.com' }).lean())!;
     const r = (await Referral.findOne({ refereeId: second._id }).lean())!;
     expect(r.flags).toContain('same_network');
+  });
+});
+
+describe('abuse checks', () => {
+  it('flags the same device, and sign-ups beyond the daily limit', async () => {
+    const t = setup();
+    const referrer = await member(t, { signupDeviceHash: 'dev-1' });
+    const a = await member(t, { referredBy: undefined });
+    await attribute(t.ctx, { id: a.id, deviceHash: 'dev-1' }, referrer.id, referrer.code);
+    expect((await Referral.findOne({ refereeId: a.id }).lean())!.flags).toContain('same_device');
+    for (let k = 0; k < 5; k++) {
+      const x = await member(t, { referredBy: undefined });
+      await attribute(t.ctx, { id: x.id }, referrer.id, referrer.code);
+    }
+    const last = await member(t, { referredBy: undefined });
+    await attribute(t.ctx, { id: last.id }, referrer.id, referrer.code);
+    expect((await Referral.findOne({ refereeId: last.id }).lean())!.flags).toContain('velocity');
+  });
+
+  it('flags a referee who pays with the same card or UPI id as the inviter', async () => {
+    const t = setup();
+    const referrer = await member(t);
+    const referee = await member(t, { referredBy: undefined });
+    await Referral.create({ referrerId: referrer.id, refereeId: referee.id, code: referrer.code });
+    await Payment.create({ userId: referrer.id, razorpayPaymentId: 'pay_ref', kind: 'pack', amountPaise: 49_900, status: 'captured', instrumentHash: 'same' });
+    await Payment.create({ userId: referee.id, razorpayPaymentId: 'pay_new', kind: 'pack', amountPaise: 49_900, status: 'captured', instrumentHash: 'same' });
+    expect(await onPayment(referee.id, 'pay_new', 49_900)).toBe(true);
+    expect((await Referral.findOne({ refereeId: referee.id }).lean())!.flags).toContain('same_instrument');
   });
 });
 
@@ -277,6 +305,15 @@ describe('wallet', () => {
     const ledger = await WalletLedger.find({ userId: m.id }).lean();
     expect(ledger).toHaveLength(1);
     expect(ledger[0]).toMatchObject({ type: 'spend', deltaPaise: -30_000, balanceAfterPaise: 0 });
+  });
+
+  it('never lets the wallet pay more than the configured share of an order', async () => {
+    const t = setup();
+    await Setting.updateOne({ key: 'referral' }, { $set: { value: { walletMaxPercent: 50 } } }, { upsert: true });
+    const m = await member(t, { walletBalancePaise: 100_000 });
+    const o = await buyPack(t, m, 'pack_1', 'pay_cap', { useWallet: true });
+    expect(o.walletPaise).toBe(Math.floor(49_900 / 2));
+    expect(o.paid).toBe(false);
   });
 
   it('pays in full from the wallet with no gateway order and no invoice', async () => {

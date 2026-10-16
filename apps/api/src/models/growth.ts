@@ -1,5 +1,5 @@
 import { Schema, model } from 'mongoose';
-import { ANALYTICS_EVENTS, FEEDBACK_TAGS } from '@marchmaker/shared';
+import { ANALYTICS_EVENTS, FEEDBACK_STAGES, FEEDBACK_TAGS } from '@marchmaker/shared';
 
 const base = { timestamps: true, versionKey: false } as const;
 const schemaVersion = { type: Number, default: 1 } as const;
@@ -38,8 +38,9 @@ const introFeedbackSchema = new Schema(
     schemaVersion,
     introductionId: { type: Schema.Types.ObjectId, required: true },
     userId: { type: Schema.Types.ObjectId, required: true, index: true },
-    stage: { type: String, enum: ['checkin'], default: 'checkin' },
-    rating: { type: Number, min: 1, max: 5, required: true },
+    stage: { type: String, enum: FEEDBACK_STAGES, default: 'checkin' },
+    rating: { type: Number, min: 1, max: 5 },
+    met: Boolean,
     tags: [{ type: String, enum: FEEDBACK_TAGS }],
     note: String,
   },
@@ -48,10 +49,10 @@ const introFeedbackSchema = new Schema(
 introFeedbackSchema.index({ introductionId: 1, userId: 1, stage: 1 }, { unique: true });
 
 const checkinMarkerSchema = new Schema(
-  { introductionId: { type: Schema.Types.ObjectId, required: true }, userId: { type: Schema.Types.ObjectId, required: true } },
+  { introductionId: { type: Schema.Types.ObjectId, required: true }, userId: { type: Schema.Types.ObjectId, required: true }, stage: { type: String, default: 'checkin' } },
   { versionKey: false, timestamps: true },
 );
-checkinMarkerSchema.index({ introductionId: 1, userId: 1 }, { unique: true });
+checkinMarkerSchema.index({ introductionId: 1, userId: 1, stage: 1 }, { unique: true });
 
 const experimentSchema = new Schema(
   {

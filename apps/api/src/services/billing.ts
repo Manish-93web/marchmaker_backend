@@ -168,7 +168,7 @@ export async function startPackOrder(
   }
   const amount = list - discount;
   const me = await User.findById(userId).select('walletBalancePaise').lean();
-  const split = splitWithWallet(amount, me?.walletBalancePaise ?? 0, input.useWallet === true);
+  const split = splitWithWallet(amount, me?.walletBalancePaise ?? 0, input.useWallet === true, (await referrals.getSettings()).walletMaxPercent);
 
   const orderId = new mongoose.Types.ObjectId();
   // Reserve the coupon first, against the id the order will have; give it back if anything below fails.
@@ -254,6 +254,8 @@ interface NormalPayment {
   orderId?: string;
   amount: number;
   method?: string;
+  /** Card id or UPI address as sent by the gateway; hashed before it is stored. */
+  instrument?: string;
 }
 
 async function relay(session: ClientSession, eventType: string, payload: Record<string, unknown>) {
@@ -286,6 +288,7 @@ export async function fulfilPackOrder(ctx: AppContext, p: NormalPayment): Promis
             amountPaise: p.amount,
             status: 'captured',
             method: p.method,
+            instrumentHash: p.instrument ? ctx.crypto.blindIndex(`instrument:${p.instrument}`) : undefined,
             capturedAt: new Date(),
             creditsGranted: mismatch ? 0 : order.credits,
           },
@@ -337,6 +340,8 @@ interface PayEntity {
   order_id?: string;
   subscription_id?: string;
   method?: string;
+  card_id?: string;
+  vpa?: string;
   error_code?: string;
   notes?: Record<string, string>;
 }
@@ -568,7 +573,7 @@ export async function processEvent(ctx: AppContext, ev: Pick<ProviderEvent, 'eve
     case 'payment.captured':
     case 'order.paid':
       if (pay?.order_id) {
-        await fulfilPackOrder(ctx, { paymentId: pay.id, orderId: pay.order_id, amount: pay.amount, method: pay.method });
+        await fulfilPackOrder(ctx, { paymentId: pay.id, orderId: pay.order_id, amount: pay.amount, method: pay.method, instrument: pay.card_id ?? pay.vpa });
       }
       return;
     case 'payment.failed':
@@ -648,7 +653,7 @@ export async function reconcileOrder(ctx: AppContext, orderId: string): Promise<
   const payments = await provider.fetchOrderPayments(orderId);
   const captured = payments.find((p) => p.status === 'captured');
   if (!captured) return 'pending';
-  await fulfilPackOrder(ctx, { paymentId: captured.id, orderId, amount: captured.amount, method: captured.method });
+  await fulfilPackOrder(ctx, { paymentId: captured.id, orderId, amount: captured.amount, method: captured.method, instrument: captured.instrument });
   return 'paid';
 }
 

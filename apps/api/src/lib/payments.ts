@@ -18,6 +18,8 @@ export interface ProviderPayment {
   status: string; // captured, failed, authorized, refunded...
   amount: number;
   method?: string;
+  /** Card id or UPI address, if the gateway reports one. */
+  instrument?: string;
 }
 
 export interface WebhookEvent {
@@ -272,11 +274,11 @@ export class RazorpayProvider implements PaymentProvider {
     return this.toSub(await this.call('POST', `/subscriptions/${id}/cancel`, { cancel_at_cycle_end: atCycleEnd ? 1 : 0 }));
   }
   async fetchOrderPayments(orderId: string) {
-    const r = await this.call<{ items: { id: string; order_id?: string; status: string; amount: number; method?: string }[] }>(
+    const r = await this.call<{ items: { id: string; order_id?: string; status: string; amount: number; method?: string; card_id?: string; vpa?: string }[] }>(
       'GET',
       `/orders/${orderId}/payments`,
     );
-    return r.items.map((p) => ({ id: p.id, orderId: p.order_id, status: p.status, amount: p.amount, method: p.method }));
+    return r.items.map((p) => ({ id: p.id, orderId: p.order_id, status: p.status, amount: p.amount, method: p.method, instrument: p.card_id ?? p.vpa }));
   }
   async refund(paymentId: string, amountPaise: number) {
     const r = await this.call<{ id: string; status: string }>('POST', `/payments/${paymentId}/refund`, { amount: amountPaise });

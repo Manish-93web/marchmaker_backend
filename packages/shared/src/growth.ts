@@ -104,13 +104,27 @@ export const FEEDBACK_TAGS = [
 ] as const;
 export type FeedbackTag = (typeof FEEDBACK_TAGS)[number];
 
-export const introFeedbackSchema = z.object({
-  introductionId: z.string().regex(/^[a-f\d]{24}$/i),
-  /** How well the introduction fitted what you are looking for, 1 to 5. */
-  rating: z.number().int().min(1).max(5),
-  tags: z.array(z.enum(FEEDBACK_TAGS)).max(4).default([]),
-  note: z.string().trim().max(500).optional(),
-});
+/** checkin = a week after unlock, closed = when a member ends the conversation, meeting = "did you meet?" three weeks in. */
+export const FEEDBACK_STAGES = ['checkin', 'closed', 'meeting'] as const;
+export type FeedbackStage = (typeof FEEDBACK_STAGES)[number];
+
+export const introFeedbackSchema = z
+  .object({
+    introductionId: z.string().regex(/^[a-f\d]{24}$/i),
+    stage: z.enum(FEEDBACK_STAGES).default('checkin'),
+    /** How well the introduction fitted what you are looking for, 1 to 5. Optional only for the meeting question. */
+    rating: z.number().int().min(1).max(5).optional(),
+    /** For the meeting stage: did the two of you meet in person? */
+    met: z.boolean().optional(),
+    tags: z.array(z.enum(FEEDBACK_TAGS)).max(4).default([]),
+    note: z.string().trim().max(500).optional(),
+  })
+  .refine((v) => (v.stage === 'meeting' ? v.met !== undefined : v.rating !== undefined), { message: 'Please answer the question' });
+
+export const MEETING_AFTER_DAYS = 21;
+/** Feedback can move each matching weight by at most this much, whatever the data says. */
+export const MAX_LEARNED_SHIFT = 0.05;
+export const MIN_LEARNED_SAMPLES = 30;
 
 /** Pure: tallies decline reasons so staff and members can see a pattern. */
 export function tallyReasons(reasons: (string | undefined | null)[]): Record<string, number> {

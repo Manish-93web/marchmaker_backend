@@ -46,6 +46,8 @@ const userSchema = new Schema(
     referralCode: { type: String, unique: true, sparse: true },
     /** Keyed hash of the sign-up network address, only used to spot self-referrals. */
     signupIpHash: String,
+    /** Keyed hash of the browser's random device id at sign-up, used only to spot self-referrals. */
+    signupDeviceHash: String,
     referredBy: { type: Schema.Types.ObjectId, ref: 'User' },
     notificationPrefs: { type: Schema.Types.Mixed, default: {} },
     locale: { type: String, default: 'en-IN' },

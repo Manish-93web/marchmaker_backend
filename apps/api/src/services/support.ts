@@ -1,7 +1,9 @@
 import type { Request } from 'express';
 import {
   defaultPriority,
+  REPORT_SEVERITY,
   ticketDueAt,
+  type ReportCategory,
   type Role,
   type TicketCategory,
   type TicketPriority,
@@ -149,14 +151,13 @@ export async function csatSummary(days = 30) {
 export async function escalateToModeration(
   req: Request,
   id: string,
-  input: { category: (typeof import('@marchmaker/shared'))['REPORT_CATEGORIES'][number]; reportedUserId: string; note: string },
+  input: { category: ReportCategory; reportedUserId: string; note: string },
   actor: Actor,
 ) {
   const t = await Ticket.findById(id);
   if (!t) throw notFound();
   if (!t.userId) throw conflict('This ticket is not linked to a member, so it cannot become a report');
   if (await Report.exists({ sourceTicketId: t._id })) throw conflict('This ticket has already been escalated');
-  const { REPORT_SEVERITY } = await import('@marchmaker/shared');
   const severity = REPORT_SEVERITY[input.category];
   const r = await Report.create({
     reporterId: t.userId,

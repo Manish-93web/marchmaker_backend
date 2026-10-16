@@ -1,3 +1,5 @@
+import type { RekognitionClient } from '@aws-sdk/client-rekognition';
+
 /**
  * Automated image checks sit behind this interface (face present, NSFW). `null` means
  * "not checked": the photo then waits for a human in the admin photo queue, which is
@@ -25,7 +27,7 @@ export class MockModeration implements ImageModeration {
  * Any provider error returns "not checked" so the photo still reaches a human reviewer.
  */
 export class RekognitionModeration implements ImageModeration {
-  private client: import('@aws-sdk/client-rekognition').RekognitionClient | null = null;
+  private client: RekognitionClient | null = null;
   constructor(
     private readonly region: string,
     private readonly log?: { warn: (o: object, m: string) => void },

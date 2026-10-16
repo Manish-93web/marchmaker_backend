@@ -20,6 +20,10 @@ export const referralSettingsSchema = z.object({
   maxRewardsPerReferrer: z.number().int().min(1).max(500),
   /** The invited member must have passed ID verification before rewards release. */
   requireVerifiedReferee: z.boolean(),
+  /** The most of one order the wallet may pay for, as a percentage. */
+  walletMaxPercent: z.number().int().min(10).max(100),
+  /** Sign-ups credited to one inviter in a day before the rest go to a person for review. */
+  maxReferralsPerDay: z.number().int().min(1).max(100),
 });
 export type ReferralSettings = z.infer<typeof referralSettingsSchema>;
 
@@ -31,10 +35,12 @@ export const DEFAULT_REFERRAL_SETTINGS: ReferralSettings = {
   holdDays: 7,
   maxRewardsPerReferrer: 20,
   requireVerifiedReferee: true,
+  walletMaxPercent: 100,
+  maxReferralsPerDay: 5,
 };
 
 /** Signals that send a referral to a person instead of paying out automatically. */
-export const REFERRAL_FLAGS = ['same_network', 'same_phone', 'same_name_pattern'] as const;
+export const REFERRAL_FLAGS = ['same_network', 'same_phone', 'same_name_pattern', 'same_device', 'same_instrument', 'velocity'] as const;
 export type ReferralFlag = (typeof REFERRAL_FLAGS)[number];
 
 /** Gateways cannot take less than one rupee. */
@@ -49,9 +55,9 @@ export interface WalletSplit {
  * How much of a purchase the wallet pays. The remainder goes to the payment gateway, which cannot
  * take less than MIN_CASH_PAISE: if the wallet would leave a smaller amount, it pays a little less.
  */
-export function splitWithWallet(amountPaise: number, walletBalancePaise: number, useWallet: boolean): WalletSplit {
+export function splitWithWallet(amountPaise: number, walletBalancePaise: number, useWallet: boolean, maxPercent = 100): WalletSplit {
   if (!useWallet || walletBalancePaise <= 0 || amountPaise <= 0) return { walletPaise: 0, cashPaise: amountPaise };
-  let wallet = Math.min(walletBalancePaise, amountPaise);
+  let wallet = Math.min(walletBalancePaise, amountPaise, Math.floor((amountPaise * Math.min(100, Math.max(0, maxPercent))) / 100));
   const cash = amountPaise - wallet;
   if (cash > 0 && cash < MIN_CASH_PAISE) wallet = Math.max(0, amountPaise - MIN_CASH_PAISE);
   return { walletPaise: wallet, cashPaise: amountPaise - wallet };

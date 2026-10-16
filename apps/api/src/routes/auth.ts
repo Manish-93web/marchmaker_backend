@@ -43,7 +43,7 @@ export function authRouter(ctx: AppContext): Router {
   const refreshDays = ctx.env.REFRESH_TTL_DAYS;
   const staffRefreshDays = 1;
 
-  const client = (req: Request) => ({ ip: req.ip, userAgent: req.get('user-agent') });
+  const client = (req: Request) => ({ ip: req.ip, userAgent: req.get('user-agent'), deviceId: (req.get('x-device-id') ?? '').slice(0, 64) || undefined });
 
   function sendSession(
     res: Response,

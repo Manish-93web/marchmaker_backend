@@ -46,21 +46,26 @@ export async function saveSettings(req: Request, value: unknown, actor: Actor) {
  */
 export async function attribute(
   ctx: AppContext,
-  newUser: { id: Types.ObjectId | string; phoneHash?: string | null; ipHash?: string | null },
+  newUser: { id: Types.ObjectId | string; phoneHash?: string | null; ipHash?: string | null; deviceHash?: string | null },
   referrerId: Types.ObjectId | string,
   code: string,
 ) {
   const settings = await getSettings();
   if (!settings.enabled) return null;
   if (sid(newUser.id) === sid(referrerId)) return null;
-  const referrer = await User.findById(referrerId).select('status phoneHash signupIpHash').lean();
+  const referrer = await User.findById(referrerId).select('status phoneHash signupIpHash signupDeviceHash').lean();
   if (!referrer || referrer.status !== 'active') return null;
 
   const flags: ReferralFlag[] = [];
   if (newUser.ipHash && referrer.signupIpHash && newUser.ipHash === referrer.signupIpHash) flags.push('same_network');
   if (newUser.phoneHash && referrer.phoneHash && newUser.phoneHash === referrer.phoneHash) flags.push('same_phone');
+  if (newUser.deviceHash && referrer.signupDeviceHash && newUser.deviceHash === referrer.signupDeviceHash) flags.push('same_device');
+  // Another account on the same device or network already invited by this person: a pattern worth a look.
+  const recent = await Referral.countDocuments({ referrerId, createdAt: { $gte: new Date(Date.now() - 86_400_000) } });
+  if (recent >= settings.maxReferralsPerDay) flags.push('velocity');
+  if (newUser.deviceHash && (await User.exists({ signupDeviceHash: newUser.deviceHash, _id: { $ne: newUser.id }, referredBy: referrerId }))) flags.push('same_device');
   try {
-    const r = await Referral.create({ referrerId, refereeId: newUser.id, code, flags });
+    const r = await Referral.create({ referrerId, refereeId: newUser.id, code, flags: [...new Set(flags)] });
     return r;
   } catch (err) {
     if ((err as { code?: number }).code === 11000) return null;
@@ -72,12 +77,17 @@ export async function attribute(
 export async function onPayment(userId: Types.ObjectId | string, razorpayPaymentId: string, amountPaise: number) {
   const settings = await getSettings();
   if (!settings.enabled || amountPaise < settings.minPurchasePaise) return false;
-  const pay = await Payment.findOne({ razorpayPaymentId }).select('_id').lean();
+  const pay = await Payment.findOne({ razorpayPaymentId }).select('_id instrumentHash').lean();
   if (!pay) return false;
+  // The same card or UPI id on both accounts means someone is paying for their own reward.
+  const existing = await Referral.findOne({ refereeId: userId, status: 'attributed' }).select('referrerId').lean();
+  const sameInstrument =
+    existing && pay.instrumentHash ? await Payment.exists({ userId: existing.referrerId, instrumentHash: pay.instrumentHash, status: { $in: ['captured', 'partially_refunded'] } }) : null;
   const now = new Date();
   const r = await Referral.findOneAndUpdate(
     { refereeId: userId, status: 'attributed' },
     {
+      ...(sameInstrument && { $addToSet: { flags: 'same_instrument' } }),
       $set: {
         status: 'qualified',
         qualifiedAt: now,

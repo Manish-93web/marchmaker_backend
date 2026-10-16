@@ -25,6 +25,7 @@ import { issueSession, revokeAllSessions, type IssuedTokens } from './sessions';
 export interface ClientInfo {
   ip?: string;
   userAgent?: string;
+  deviceId?: string;
 }
 
 const BAD_LOGIN = 'Email or password is incorrect';
@@ -121,6 +122,7 @@ export async function register(ctx: AppContext, input: RegisterInput, client: Cl
       referralCode: newReferralCode(),
       referredBy,
       signupIpHash: client.ip ? ctx.crypto.blindIndex(client.ip) : undefined,
+      signupDeviceHash: client.deviceId ? ctx.crypto.blindIndex(`device:${client.deviceId}`) : undefined,
       roles: ['member'],
     });
   } catch (err) {
@@ -137,7 +139,7 @@ export async function register(ctx: AppContext, input: RegisterInput, client: Cl
   }
   if (referredBy && input.referralCode) {
     await referrals
-      .attribute(ctx, { id: user._id, phoneHash, ipHash: client.ip ? ctx.crypto.blindIndex(client.ip) : undefined }, referredBy, input.referralCode.toUpperCase())
+      .attribute(ctx, { id: user._id, phoneHash, ipHash: client.ip ? ctx.crypto.blindIndex(client.ip) : undefined, deviceHash: client.deviceId ? ctx.crypto.blindIndex(`device:${client.deviceId}`) : undefined }, referredBy, input.referralCode.toUpperCase())
       .catch((err) => ctx.log.warn({ err }, 'referral attribution failed'));
   }
   await logTransition('user_journey', String(user._id), undefined, 'registered');

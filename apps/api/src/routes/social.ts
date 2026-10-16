@@ -110,6 +110,13 @@ export function socialRouter(ctx: AppContext): Router {
     }),
   );
   r.post(
+    '/threads/:id/end',
+    validate({ params: idParams }),
+    asyncHandler(async (req, res) => {
+      res.json(await messaging.endConversation(String(req.params.id), authedUser(req).userId));
+    }),
+  );
+  r.post(
     '/threads/:id/read',
     validate({ params: idParams }),
     asyncHandler(async (req, res) => {

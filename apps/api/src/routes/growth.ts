@@ -118,6 +118,14 @@ export function adminGrowthRouter(): Router {
     }),
   );
   r.get(
+    '/reports/relevance',
+    requirePermission('metrics.view'),
+    validate({ query: z.object({ days: z.coerce.number().int().min(7).max(365).default(90) }) }),
+    asyncHandler(async (req, res) => {
+      noStore(res).json(await feedback.relevanceReport((req.query as unknown as { days: number }).days));
+    }),
+  );
+  r.get(
     '/members/:id/feedback',
     requirePermission('member.view_full'),
     validate({ params: idParams }),

@@ -6,7 +6,7 @@ import { processPhoto } from '@marchmaker/api/photo-jobs';
 import { expireAndRemind, releaseDueMatches, runForMember, runNightlyIfDue } from '@marchmaker/api/matching-jobs';
 import { pollPendingKyc, processKycEvent, purgeExpiredEvidence } from '@marchmaker/api/verification-jobs';
 import { handleInvoiceCreated, lapseAccess, reconcile } from '@marchmaker/api/billing-jobs';
-import { sendCheckIns } from '@marchmaker/api/growth-jobs';
+import { refreshLearnedWeights, sendCheckIns } from '@marchmaker/api/growth-jobs';
 import { sendSlaAlerts } from '@marchmaker/api/sla-jobs';
 import { releaseReferralRewards } from '@marchmaker/api/referral-jobs';
 import { closeStaleTickets } from '@marchmaker/api/support-jobs';
@@ -67,6 +67,7 @@ export async function runSweeps(ctx: WorkerContext): Promise<void> {
   await closeStaleTickets();
   await releaseReferralRewards();
   await sendCheckIns();
+  await refreshLearnedWeights();
   await sendSlaAlerts(ctx);
 }
 

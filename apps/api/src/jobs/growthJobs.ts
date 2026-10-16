@@ -1,1 +1,1 @@
-export { sendCheckIns } from '../services/feedback';
+export { sendCheckIns, refreshLearnedWeights } from '../services/feedback';

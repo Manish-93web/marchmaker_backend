@@ -114,6 +114,17 @@ export async function send(threadId: string, userId: string, body: string, clien
   return { id: sid(msg._id), at: msg.createdAt, duplicate: false };
 }
 
+/** Either person can end a conversation. The other sees only a neutral ending, never who ended it or why. */
+export async function endConversation(threadId: string, userId: string) {
+  const t = await thread(threadId, userId);
+  if (t.status === 'closed') return { status: 'closed' as const, introductionId: sid(t.introductionId) };
+  t.status = 'closed';
+  t.closedReason = `ended_by_member:${userId}`;
+  await t.save();
+  await emit('thread.closed', { threadId: sid(t._id), introductionId: sid(t.introductionId) });
+  return { status: 'closed' as const, introductionId: sid(t.introductionId) };
+}
+
 export async function markRead(threadId: string, userId: string) {
   const t = await thread(threadId, userId);
   const now = new Date();

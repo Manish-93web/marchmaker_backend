@@ -220,6 +220,16 @@ export const NOTIFICATION_SPECS: Record<string, NotificationSpec> = {
       url: `/introductions/${s(p.introductionId)}?feedback=1`,
     }),
   },
+  'feedback.meeting': {
+    category: 'introductions',
+    only: ['in_app', 'email'],
+    sourceId: (p) => `${s(p.introductionId)}:${s(p.userId)}:meeting`,
+    copy: (p) => ({
+      title: 'Did you get to meet?',
+      body: 'Three weeks on, we would love to know whether the two of you met. It takes ten seconds and stays private.',
+      url: `/introductions/${s(p.introductionId)}?feedback=meeting`,
+    }),
+  },
   'story.decided': {
     category: 'product_updates',
     only: ['in_app'],

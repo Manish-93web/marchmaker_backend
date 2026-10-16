@@ -72,6 +72,8 @@ const paymentSchema = new Schema(
     currency: { type: String, default: 'INR' },
     status: { type: String, enum: ['captured', 'failed', 'refunded', 'partially_refunded'], required: true },
     method: String,
+    /** Keyed hash of the card or UPI id used, only to spot a member paying for their own referral. */
+    instrumentHash: String,
     errorCode: String,
     capturedAt: Date,
     refundedPaise: { type: Number, default: 0 },
