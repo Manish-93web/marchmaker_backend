@@ -40,6 +40,8 @@ const envSchema = z.object({
   EXPORT_DIR: z.string().default('./.data/exports'),
   TOTP_ISSUER: z.string().default('Marchmaker'),
 
+  /** OAuth client id for Sign in with Google (Google Cloud console). Unset hides the button. */
+  GOOGLE_CLIENT_ID: z.string().trim().min(10).optional(),
   STORAGE_PROVIDER: z.enum(['memory', 'local', 's3']).default('memory'),
   /** Where the local development storage keeps files. */
   LOCAL_STORAGE_DIR: z.string().default('./.data/storage'),

@@ -39,6 +39,7 @@ export function v1Router(ctx: AppContext): Router {
       featureFlagKeys: FEATURE_FLAGS,
       limits: { maxPhotos: DEFAULTS.maxPhotos, firstNoteMin: DEFAULTS.firstNoteMin, firstNoteMax: DEFAULTS.firstNoteMax },
       roles: Object.keys(DEFAULT_ROLE_PERMISSIONS),
+      googleClientId: ctx.env.GOOGLE_CLIENT_ID ?? null,
     });
   });
 

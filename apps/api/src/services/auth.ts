@@ -6,12 +6,16 @@ import {
   journeyMachine,
   trackerFor,
   type JourneyState,
+  ageOn,
+  MIN_AGE,
+  type GoogleSignInInput,
   type RegisterInput,
   type Role,
 } from '@marchmaker/shared';
 import type { AppContext } from '../context';
 import { audit, emit, logTransition } from '../lib/audit';
 import { AppError, badRequest, forbidden, unauthorized } from '../lib/errors';
+import { verifyGoogleIdToken } from '../lib/googleAuth';
 import { dummyHash, hashPassword, verifyPassword } from '../lib/passwords';
 import { hmac, randomOtp, randomToken, safeEqual, sha256 } from '../lib/secrets';
 import { AuthToken, OtpCode } from '../models/auth';
@@ -277,6 +281,87 @@ export async function login(
     mfa,
     requiresTotpSetup: staff && !user.twoFactor?.enabled,
   };
+}
+
+// ---------------------------------------------------------------- Google sign-in
+
+/**
+ * Signs in with a Google ID token. A known account (same Google id, or same verified email) is signed in and linked.
+ * A new person must also give the details Google does not share (birth date, gender) and accept the terms, so the
+ * first call may answer PROFILE_NEEDED; the page then asks for those and sends the same credential again.
+ */
+export async function googleSignIn(ctx: AppContext, input: GoogleSignInInput, client: ClientInfo): Promise<LoginResult> {
+  if (!ctx.env.GOOGLE_CLIENT_ID) throw badRequest('Google sign-in is not available right now');
+  const g = await verifyGoogleIdToken(input.credential, ctx.env.GOOGLE_CLIENT_ID);
+  if (!g.emailVerified) throw badRequest('Your Google email address is not verified');
+
+  let user = await User.findOne({ $or: [{ googleSub: g.sub }, { email: g.email }] });
+  if (user) {
+    if (['banned', 'deleted'].includes(user.status)) throw forbidden('This account is not available. Please contact support.');
+    if (isStaff(user.roles as Role[])) throw forbidden('Staff accounts must sign in with a password and authenticator code');
+    if (user.googleSub && user.googleSub !== g.sub) throw forbidden('This email is linked to a different Google account');
+    user.googleSub = g.sub;
+    const firstVerify = !user.emailVerifiedAt;
+    user.emailVerifiedAt ??= new Date();
+    user.lastActiveAt = new Date();
+    await user.save();
+    if (firstVerify) {
+      await onContactVerified(user);
+      await emit('user.email_verified', { userId: String(user._id) });
+    }
+  } else {
+    if (!input.dob || !input.gender || input.acceptTerms !== true) {
+      throw new AppError(422, 'PROFILE_NEEDED', 'Tell us a little more to finish creating your account', {
+        email: g.email,
+        firstName: g.givenName ?? g.name?.split(' ')[0] ?? '',
+      });
+    }
+    const minAge = MIN_AGE[input.gender];
+    if (ageOn(input.dob) < minAge) {
+      throw new AppError(422, 'VALIDATION_ERROR', `You must be at least ${minAge} years old to join`, { dob: `You must be at least ${minAge} years old to join` });
+    }
+    let referredBy: Types.ObjectId | undefined;
+    if (input.referralCode) referredBy = (await User.findOne({ referralCode: input.referralCode.toUpperCase() }).select('_id'))?._id;
+    const deviceHash = client.deviceId ? ctx.crypto.blindIndex(`device:${client.deviceId}`) : undefined;
+    const ipHash = client.ip ? ctx.crypto.blindIndex(client.ip) : undefined;
+    try {
+      user = await User.create({
+        email: g.email,
+        googleSub: g.sub,
+        emailVerifiedAt: new Date(),
+        firstName: (g.givenName ?? g.name?.split(' ')[0] ?? g.email.split('@')[0] ?? 'Member').slice(0, 60),
+        gender: input.gender,
+        dobEnc: ctx.crypto.encrypt(input.dob.toISOString().slice(0, 10)),
+        dobYear: input.dob.getUTCFullYear(),
+        referralCode: newReferralCode(),
+        referredBy,
+        signupIpHash: ipHash,
+        signupDeviceHash: deviceHash,
+        roles: ['member'],
+        lastActiveAt: new Date(),
+      });
+    } catch (err) {
+      if ((err as { code?: number }).code === 11000) throw new AppError(409, 'CONFLICT', 'Please try signing in with Google again');
+      throw err;
+    }
+    const legal = await latestLegal(['terms', 'privacy']);
+    for (const purpose of ['terms', 'privacy'] as const) {
+      await recordConsent(user._id, purpose, true, { ...client, documentVersion: legal.find((d) => d.type === purpose)?.version });
+    }
+    if (referredBy && input.referralCode) {
+      await referrals
+        .attribute(ctx, { id: user._id, phoneHash: undefined, ipHash, deviceHash }, referredBy, input.referralCode.toUpperCase())
+        .catch((err) => ctx.log.warn({ err }, 'referral attribution failed'));
+    }
+    await logTransition('user_journey', String(user._id), undefined, 'registered');
+    await emit('user.registered', { userId: String(user._id) });
+    await onContactVerified(user);
+    await emit('user.email_verified', { userId: String(user._id) });
+  }
+
+  const tokens = await issueSession(ctx, user, client, { mfa: false });
+  await audit(undefined, { action: 'auth.login_google', actorId: user._id, actorRoles: user.roles, subjectType: 'user', subjectId: String(user._id) });
+  return { tokens, userId: String(user._id), roles: user.roles as Role[], mfa: false, requiresTotpSetup: false };
 }
 
 // ---------------------------------------------------------------- OTP

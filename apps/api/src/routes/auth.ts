@@ -3,6 +3,7 @@ import { Router, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import {
   forgotPasswordSchema,
+  googleSignInSchema,
   loginSchema,
   otpRequestSchema,
   otpVerifySchema,
@@ -86,6 +87,17 @@ export function authRouter(ctx: AppContext): Router {
         { userId: result.userId, roles: result.roles, mfa: result.mfa, requiresTotpSetup: result.requiresTotpSetup },
         staff,
       );
+    }),
+  );
+
+  r.post(
+    '/google',
+    limiter(ctx, 30, 15 * 60_000),
+    validate({ body: googleSignInSchema }),
+    asyncHandler(async (req, res) => {
+      const { clientType, ...input } = req.body;
+      const result = await auth.googleSignIn(ctx, input, client(req));
+      sendSession(res, result.tokens, clientType, { userId: result.userId, roles: result.roles, mfa: false, requiresTotpSetup: false });
     }),
   );
 

@@ -53,6 +53,17 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+/** The credential is the ID token from the Google button; birth date, gender and terms are only needed for a new account. */
+export const googleSignInSchema = z.object({
+  credential: z.string().min(20).max(4096),
+  gender: z.enum(GENDERS).optional(),
+  dob: z.coerce.date().optional(),
+  acceptTerms: z.literal(true).optional(),
+  referralCode: z.string().trim().max(32).optional(),
+  clientType: z.enum(['web', 'mobile']).default('web'),
+});
+export type GoogleSignInInput = z.infer<typeof googleSignInSchema>;
+
 export const OTP_PURPOSES = ['login', 'verify_phone', 'verify_email', 'change_contact'] as const;
 export const otpRequestSchema = z.object({
   target: z.union([emailSchema, phoneSchema]),

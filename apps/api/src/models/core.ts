@@ -15,6 +15,8 @@ const userSchema = new Schema(
     schemaVersion,
     email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
     emailVerifiedAt: Date,
+    /** Google account id, set when someone signs in with Google. */
+    googleSub: { type: String, unique: true, sparse: true },
     /** AES-256-GCM ciphertext; use phoneHash for lookups. */
     phoneEnc: String,
     phoneHash: { type: String, index: true, sparse: true },

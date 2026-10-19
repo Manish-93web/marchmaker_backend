@@ -70,7 +70,7 @@ export function originCheck(ctx: AppContext): RequestHandler {
 }
 
 const CSRF_EXEMPT = [
-  /^\/auth\/(register|login|otp\/|verify-email|resend-verification|password\/)/,
+  /^\/auth\/(register|login|google|otp\/|verify-email|resend-verification|password\/)/,
   /^\/webhooks\//,
 ];
 

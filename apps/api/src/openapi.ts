@@ -19,6 +19,7 @@ import {
   consentSchema,
   deleteAccountSchema,
   forgotPasswordSchema,
+  googleSignInSchema,
   loginSchema,
   notificationPrefsSchema,
   otpRequestSchema,
@@ -49,6 +50,7 @@ interface Route {
 const routes: Route[] = [
   { method: 'post', path: '/auth/register', summary: 'Create an account (always 202; never reveals existing accounts)', tag: 'Auth', body: registerSchema, status: 202 },
   { method: 'post', path: '/auth/login', summary: 'Sign in with email + password (+ TOTP for staff)', tag: 'Auth', body: loginSchema },
+  { method: 'post', path: '/auth/google', summary: 'Sign in or sign up with a Google ID token (a new account also needs birth date, gender and terms)', tag: 'Auth', body: googleSignInSchema },
   { method: 'post', path: '/auth/refresh', summary: 'Rotate the refresh token', tag: 'Auth', body: refreshSchema },
   { method: 'post', path: '/auth/logout', summary: 'Sign out this device', tag: 'Auth', status: 204 },
   { method: 'post', path: '/auth/logout-all', summary: 'Sign out every device', tag: 'Auth', auth: true, status: 204 },
