@@ -169,6 +169,10 @@ export async function saveStep(
     });
   }
 
+  // The name the member types in their profile is the name shown across the site (greeting, introductions).
+  const typedName = typeof merged.firstName === 'string' ? merged.firstName.trim() : '';
+  if (step === 'basics' && typedName) await User.updateOne({ _id: userId, firstName: { $ne: typedName } }, { $set: { firstName: typedName } });
+
   await advanceJourney(userId, 'profile_in_progress');
   return presentProfile(ctx, updated, photoCount);
 }

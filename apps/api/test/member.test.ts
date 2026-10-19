@@ -139,6 +139,14 @@ describe('profile autosave', () => {
     expect(b.body.data.basics).toMatchObject({ firstName: 'Asha', heightCm: 165 }); // partial saves merge
   });
 
+  it('shows the name typed in the profile as the account name', async () => {
+    const t = setup();
+    const m = await member(t);
+    await m.send('patch', '/profile/steps/basics').set('If-Match', '0').send({ firstName: '  Aarav  ' }).expect(200);
+    expect((await User.findById(m.userId))?.firstName).toBe('Aarav');
+    expect((await m.get('/auth/me')).body.firstName).toBe('Aarav');
+  });
+
   it('clears a field when the client sends null', async () => {
     const t = setup();
     const m = await member(t);
