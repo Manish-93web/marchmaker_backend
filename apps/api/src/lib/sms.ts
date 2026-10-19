@@ -15,7 +15,7 @@ export class MemorySms implements SmsSender {
   constructor(private readonly log?: Logger) {}
   async send(to: string, body: string): Promise<void> {
     this.sent.push({ to, body });
-    this.log?.info('mock sms captured');
+    this.log?.info({ to, body }, 'mock sms captured');
   }
   last(to?: string) {
     return [...this.sent].reverse().find((m) => !to || m.to === to);

@@ -28,7 +28,7 @@ export class MemoryMailer implements Mailer {
   async send(msg: MailMessage): Promise<SendResult> {
     const id = `mem_${this.sent.length + 1}`;
     this.sent.push({ ...msg, id });
-    this.log?.info({ subject: msg.subject }, 'mock email captured');
+    this.log?.info({ to: msg.to, subject: msg.subject, text: msg.text }, 'mock email captured');
     return { id };
   }
   last(to?: string) {

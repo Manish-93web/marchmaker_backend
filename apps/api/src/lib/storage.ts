@@ -6,6 +6,9 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { Env } from '../config/env';
 
 export type Bucket = 'photos' | 'identity' | 'documents';
@@ -141,6 +144,70 @@ export class S3Storage implements ObjectStorage {
   }
 }
 
+/**
+ * Files on this machine's disk, for development. Uploads and downloads go through the API itself (signed, short-lived
+ * links under /api/v1/dev-storage), so the browser flow for photos and ID images works without an S3 account, and the
+ * files survive a restart. Never used in production (the start-up guard refuses it).
+ */
+export class LocalStorage implements ObjectStorage {
+  constructor(
+    private readonly dir: string,
+    private readonly secret: string,
+  ) {}
+
+  private file(b: Bucket, key: string) {
+    const root = path.resolve(this.dir, b);
+    const full = path.resolve(root, key);
+    if (!full.startsWith(root + path.sep)) throw new Error('invalid object key');
+    return full;
+  }
+  sign(method: 'PUT' | 'GET', b: Bucket, key: string, exp: number, ct = '', len = 0) {
+    return createHmac('sha256', this.secret).update(`${method}:${b}/${key}:${exp}:${ct}:${len}`).digest('hex');
+  }
+  verify(method: 'PUT' | 'GET', b: Bucket, key: string, q: { exp?: string; sig?: string; ct?: string; len?: string }) {
+    const exp = Number(q.exp);
+    if (!Number.isFinite(exp) || exp < Date.now() || !q.sig) return false;
+    const want = Buffer.from(this.sign(method, b, key, exp, q.ct ?? '', Number(q.len ?? 0)));
+    const got = Buffer.from(q.sig);
+    return want.length === got.length && timingSafeEqual(want, got);
+  }
+  async presignPut(b: Bucket, key: string, contentType: string, sizeBytes: number, ttlSec: number) {
+    const exp = Date.now() + ttlSec * 1000;
+    const sig = this.sign('PUT', b, key, exp, contentType, sizeBytes);
+    const url = `/api/v1/dev-storage/${b}/${key}?exp=${exp}&sig=${sig}&ct=${encodeURIComponent(contentType)}&len=${sizeBytes}`;
+    return { url, method: 'PUT' as const, headers: { 'Content-Type': contentType }, expiresInSec: ttlSec };
+  }
+  async presignGet(b: Bucket, key: string, ttlSec: number) {
+    const exp = Date.now() + ttlSec * 1000;
+    return `/api/v1/dev-storage/${b}/${key}?exp=${exp}&sig=${this.sign('GET', b, key, exp)}`;
+  }
+  async head(b: Bucket, key: string) {
+    try {
+      const f = this.file(b, key);
+      const st = await stat(f);
+      const ct = await readFile(`${f}.type`, 'utf8').catch(() => undefined);
+      return { size: st.size, contentType: ct };
+    } catch {
+      return null;
+    }
+  }
+  async get(b: Bucket, key: string) {
+    return readFile(this.file(b, key));
+  }
+  async put(b: Bucket, key: string, body: Buffer, contentType: string) {
+    const f = this.file(b, key);
+    await mkdir(path.dirname(f), { recursive: true });
+    await writeFile(f, body);
+    await writeFile(`${f}.type`, contentType);
+  }
+  async delete(b: Bucket, key: string) {
+    const f = this.file(b, key);
+    await rm(f, { force: true });
+    await rm(`${f}.type`, { force: true });
+  }
+}
+
 export function createStorage(env: Env): ObjectStorage {
+  if (env.STORAGE_PROVIDER === 'local') return new LocalStorage(env.LOCAL_STORAGE_DIR, env.JWT_REFRESH_SECRET);
   return env.STORAGE_PROVIDER === 's3' ? new S3Storage(env) : new MemoryStorage();
 }

@@ -40,7 +40,9 @@ const envSchema = z.object({
   EXPORT_DIR: z.string().default('./.data/exports'),
   TOTP_ISSUER: z.string().default('Marchmaker'),
 
-  STORAGE_PROVIDER: z.enum(['memory', 's3']).default('memory'),
+  STORAGE_PROVIDER: z.enum(['memory', 'local', 's3']).default('memory'),
+  /** Where the local development storage keeps files. */
+  LOCAL_STORAGE_DIR: z.string().default('./.data/storage'),
   S3_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().default('auto'),
   S3_ACCESS_KEY_ID: z.string().default(''),
@@ -161,7 +163,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (env.WHATSAPP_PROVIDER === 'meta' && !(env.WHATSAPP_VERIFY_TOKEN && env.WHATSAPP_APP_SECRET)) problems.push('WHATSAPP_VERIFY_TOKEN and WHATSAPP_APP_SECRET are required for WhatsApp webhooks');
     if (env.SMS_PROVIDER === 'mock') problems.push('SMS_PROVIDER=mock would never send OTP codes');
     if (env.SMS_PROVIDER === 'msg91' && !(env.MSG91_AUTH_KEY && env.MSG91_OTP_TEMPLATE_ID)) problems.push('MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID are required');
-    if (env.STORAGE_PROVIDER === 'memory') problems.push('STORAGE_PROVIDER=memory would lose every upload');
+    if (env.STORAGE_PROVIDER !== 's3') problems.push('STORAGE_PROVIDER must be s3 (memory and local are for development)');
     if (env.KYC_PROVIDER === 'mock') problems.push('KYC_PROVIDER=mock is not allowed');
     if (env.KYC_PROVIDER !== 'none' && env.KYC_WEBHOOK_SECRET.startsWith('dev-only')) problems.push('KYC_WEBHOOK_SECRET is the development secret');
     if (env.PAYMENTS_PROVIDER === 'none') problems.push('PAYMENTS_PROVIDER=none: members could not pay');
