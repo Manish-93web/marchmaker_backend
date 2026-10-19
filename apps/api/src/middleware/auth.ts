@@ -9,6 +9,14 @@ import { verifyAccess } from '../services/sessions';
 import type { IssuedTokens } from '../services/sessions';
 
 export const COOKIES = { access: 'mm_at', refresh: 'mm_rt', csrf: 'mm_csrf' } as const;
+/**
+ * The admin console uses its own cookie names. Browsers share cookies between ports on one host (localhost:5173 and
+ * localhost:5174), so with a single set a staff sign-in would replace the member's session. The console marks its
+ * requests with `X-App: admin`.
+ */
+export const STAFF_COOKIES = { access: 'mm_staff_at', refresh: 'mm_staff_rt', csrf: 'mm_staff_csrf' } as const;
+export type CookieNames = typeof COOKIES | typeof STAFF_COOKIES;
+export const cookieNames = (req: Pick<Request, 'get'>): CookieNames => (req.get('x-app') === 'admin' ? STAFF_COOKIES : COOKIES);
 
 export interface AuthInfo {
   userId: string;
@@ -34,26 +42,28 @@ export function setAuthCookies(ctx: AppContext, res: Response, t: IssuedTokens, 
     sameSite: 'lax' as const,
     domain: ctx.env.COOKIE_DOMAIN || undefined,
   };
-  res.cookie(COOKIES.access, t.accessToken, {
+  const names = cookieNames(res.req);
+  res.cookie(names.access, t.accessToken, {
     ...common,
     httpOnly: true,
     path: '/',
     maxAge: DEFAULTS.accessTokenTtlSec * 1000,
   });
-  res.cookie(COOKIES.refresh, t.refreshToken, {
+  res.cookie(names.refresh, t.refreshToken, {
     ...common,
     httpOnly: true,
     path: '/api/v1/auth',
     maxAge: refreshDays * 86_400_000,
   });
-  res.cookie(COOKIES.csrf, t.csrfToken, { ...common, httpOnly: false, path: '/', maxAge: refreshDays * 86_400_000 });
+  res.cookie(names.csrf, t.csrfToken, { ...common, httpOnly: false, path: '/', maxAge: refreshDays * 86_400_000 });
 }
 
 export function clearAuthCookies(ctx: AppContext, res: Response) {
   const base = { domain: ctx.env.COOKIE_DOMAIN || undefined };
-  res.clearCookie(COOKIES.access, { ...base, path: '/' });
-  res.clearCookie(COOKIES.refresh, { ...base, path: '/api/v1/auth' });
-  res.clearCookie(COOKIES.csrf, { ...base, path: '/' });
+  const names = cookieNames(res.req);
+  res.clearCookie(names.access, { ...base, path: '/' });
+  res.clearCookie(names.refresh, { ...base, path: '/api/v1/auth' });
+  res.clearCookie(names.csrf, { ...base, path: '/' });
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -82,9 +92,10 @@ export const csrfProtection: RequestHandler = (req, _res, next) => {
   if (SAFE_METHODS.has(req.method)) return next();
   if (req.get('authorization')?.startsWith('Bearer ')) return next();
   if (CSRF_EXEMPT.some((r) => r.test(req.path))) return next();
-  const hasCookieAuth = !!(req.cookies?.[COOKIES.access] || req.cookies?.[COOKIES.refresh]);
+  const names = cookieNames(req);
+  const hasCookieAuth = !!(req.cookies?.[names.access] || req.cookies?.[names.refresh]);
   if (!hasCookieAuth) return next();
-  const cookie: string | undefined = req.cookies?.[COOKIES.csrf];
+  const cookie: string | undefined = req.cookies?.[names.csrf];
   const header = req.get('x-csrf-token');
   if (!cookie || !header || !safeEqual(cookie, header)) {
     return next(new AppError(403, 'CSRF', 'Your session could not be verified. Please refresh and try again.'));
@@ -98,7 +109,7 @@ export function authenticate(ctx: AppContext): RequestHandler {
     try {
       const header = req.get('authorization');
       const bearer = header?.startsWith('Bearer ') ? header.slice(7) : undefined;
-      const token = bearer ?? (req.cookies?.[COOKIES.access] as string | undefined);
+      const token = bearer ?? (req.cookies?.[cookieNames(req).access] as string | undefined);
       if (!token) return next();
 
       const claims = verifyAccess(ctx, token);

@@ -44,7 +44,7 @@ export function securityMiddleware(env: Env): RequestHandler[] {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-      allowedHeaders: ['content-type', 'authorization', 'x-csrf-token', 'idempotency-key', 'if-match', 'x-request-id'],
+      allowedHeaders: ['content-type', 'authorization', 'x-csrf-token', 'idempotency-key', 'if-match', 'x-request-id', 'x-app'],
       maxAge: 600,
     }),
     hpp(),

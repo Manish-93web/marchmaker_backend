@@ -18,7 +18,7 @@ import type { AppContext } from '../context';
 import { audit } from '../lib/audit';
 import { unauthorized } from '../lib/errors';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { authedUser, clearAuthCookies, COOKIES, requireAuth, setAuthCookies } from '../middleware/auth';
+import { authedUser, clearAuthCookies, cookieNames, requireAuth, setAuthCookies } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { User } from '../models/core';
 import * as auth from '../services/auth';
@@ -107,7 +107,7 @@ export function authRouter(ctx: AppContext): Router {
     validate({ body: refreshSchema }),
     asyncHandler(async (req, res) => {
       const fromBody = req.body.refreshToken as string | undefined;
-      const token = fromBody ?? (req.cookies?.[COOKIES.refresh] as string | undefined);
+      const token = fromBody ?? (req.cookies?.[cookieNames(req).refresh] as string | undefined);
       if (!token) throw unauthorized('Your session has ended. Please sign in again.');
       const out = await rotateRefresh(ctx, token, client(req), (id) =>
         User.findById(id).select('roles status').lean() as never,
