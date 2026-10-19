@@ -10,3 +10,4 @@ storybook-static
 
 _legacy_prototype
 .data/
+*.local.mjs

@@ -17,6 +17,8 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32).default('dev-only-refresh-secret-change-me-012345678'),
   COOKIE_DOMAIN: z.string().optional(),
   COOKIE_SECURE: bool,
+  /** Staff must pass an authenticator code. Setting this to false is for local development only; production refuses it. */
+  STAFF_MFA_REQUIRED: z.string().optional().transform((v) => v !== 'false' && v !== '0'),
 
   CORS_ORIGINS: z
     .string()
@@ -155,6 +157,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       throw new Error('Mock WhatsApp or push providers are not allowed in production');
     }
     if (env.PAYMENTS_PROVIDER === 'mock') throw new Error('PAYMENTS_PROVIDER=mock is not allowed in production');
+    if (!env.STAFF_MFA_REQUIRED) throw new Error('STAFF_MFA_REQUIRED=false is not allowed in production');
     if (!env.COOKIE_SECURE) throw new Error('COOKIE_SECURE must be true in production');
 
     // Launch guards: anything that would silently do nothing, or run on a development default, is refused.

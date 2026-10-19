@@ -243,7 +243,11 @@ export async function login(
 
   const staff = isStaff(user.roles as Role[]);
   let mfa = false;
-  if (staff && user.twoFactor?.enabled) {
+  const mfaOff = staff && !ctx.env.STAFF_MFA_REQUIRED; // development only: the env check refuses this in production
+  if (mfaOff) {
+    mfa = true;
+    ctx.log.warn({ userId: String(user._id) }, 'staff sign-in without an authenticator code (STAFF_MFA_REQUIRED=false)');
+  } else if (staff && user.twoFactor?.enabled) {
     if (input.recoveryCode) {
       const left = await consumeRecoveryCode(ctx, String(user._id), input.recoveryCode);
       if (left === null) throw unauthorized('That code is incorrect');
@@ -279,7 +283,7 @@ export async function login(
     userId: String(user._id),
     roles: user.roles as Role[],
     mfa,
-    requiresTotpSetup: staff && !user.twoFactor?.enabled,
+    requiresTotpSetup: staff && !mfaOff && !user.twoFactor?.enabled,
   };
 }
 
