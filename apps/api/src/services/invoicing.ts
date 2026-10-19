@@ -1,7 +1,7 @@
 import type { ClientSession, Types } from 'mongoose';
 import { GST_STATES, financialYear, gstFromInclusive } from '@marchmaker/shared';
 import type { AppContext } from '../context';
-import { renderInvoicePdf, type InvoiceView } from '../lib/invoicePdf';
+import { PDF_DESIGN, renderInvoicePdf, type InvoiceView } from '../lib/invoicePdf';
 import { notFound } from '../lib/errors';
 import { User } from '../models/core';
 import { Invoice, InvoiceCounter } from '../models/billing';
@@ -78,11 +78,11 @@ export async function issue(i: IssueInput, session: ClientSession) {
   return doc!;
 }
 
-/** Renders the PDF once and stores it in the documents bucket. Safe to call again. */
+/** Renders the PDF and stores it in the documents bucket, reusing it until the layout version changes. Safe to call again. */
 export async function ensurePdf(ctx: AppContext, invoiceId: string): Promise<string> {
   const inv = await Invoice.findById(invoiceId);
   if (!inv) throw notFound();
-  if (inv.pdfKey) return inv.pdfKey;
+  if (inv.pdfKey && inv.pdfDesign === PDF_DESIGN) return inv.pdfKey;
   const related = inv.relatesTo ? await Invoice.findById(inv.relatesTo).select('number').lean() : null;
   const view: InvoiceView = {
     number: inv.number,
@@ -98,7 +98,7 @@ export async function ensurePdf(ctx: AppContext, invoiceId: string): Promise<str
   const pdf = await renderInvoicePdf(view);
   const key = `invoices/${inv.userId}/${inv.number.replace(/\//g, '-')}.pdf`;
   await ctx.storage.put('documents', key, pdf, 'application/pdf');
-  await Invoice.updateOne({ _id: inv._id }, { $set: { pdfKey: key } });
+  await Invoice.updateOne({ _id: inv._id }, { $set: { pdfKey: key, pdfDesign: PDF_DESIGN } });
   return key;
 }
 

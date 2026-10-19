@@ -21,6 +21,9 @@ export interface InvoiceView {
   relatesToNumber?: string;
 }
 
+/** Bump when the layout changes; stored PDFs from an older version are redrawn on the next download. */
+export const PDF_DESIGN = 2;
+
 // ---------------------------------------------------------------- fonts
 // Inter ships the rupee sign, which the built-in PDF fonts do not. The files live in apps/api/assets/fonts and are
 // found from either the source tree (src/lib) or the bundled build (dist).

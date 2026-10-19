@@ -132,6 +132,8 @@ const invoiceSchema = new Schema(
     placeOfSupply: String,
     issuedAt: { type: Date, default: Date.now },
     pdfKey: String,
+    /** Layout version the stored PDF was drawn with; an older one is redrawn from the same invoice data. */
+    pdfDesign: Number,
     emailedAt: Date,
   },
   base,

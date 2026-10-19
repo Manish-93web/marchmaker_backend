@@ -511,6 +511,24 @@ describe('member billing views', () => {
     expect(t.storage.has('documents', `invoices/${m.id}/${invs[0].number.replace(/\//g, '-')}.pdf`)).toBe(true);
   });
 
+  it('redraws a stored invoice PDF made with an older layout', async () => {
+    const t = setup();
+    const m = await member(t);
+    const o = (await orderPack(t, m, 'pack_1')).body;
+    await send(t, 'payment.captured', capturedPayload(t, { orderId: o.orderId, amount: o.amountPaise, paymentId: 'pay_redraw' })).expect(200);
+    const inv = (await m.get('/billing/invoices').expect(200)).body.items[0];
+    await m.get(`/billing/invoices/${inv.id}/download`).expect(200);
+    const key = `invoices/${m.id}/${inv.number.replace(/\//g, '-')}.pdf`;
+
+    // Pretend this PDF was drawn by the first layout.
+    await t.storage.put('documents', key, Buffer.from('old layout'), 'application/pdf');
+    await Invoice.updateOne({ _id: inv.id }, { $set: { pdfDesign: 1 } });
+
+    await m.get(`/billing/invoices/${inv.id}/download`).expect(200);
+    expect((await t.storage.get('documents', key)).subarray(0, 5).toString()).toBe('%PDF-');
+    expect((await Invoice.findById(inv.id))?.pdfDesign).toBeGreaterThan(1);
+  });
+
   it('saves a GSTIN and uses its state for place of supply', async () => {
     const t = setup();
     const m = await member(t);
