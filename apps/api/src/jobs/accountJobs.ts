@@ -1,9 +1,7 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { zipSync, strToU8 } from 'fflate';
-import path from 'node:path';
 import type { AppContext } from '../context';
 import { audit, logTransition } from '../lib/audit';
-import { exportLinkSig } from '../routes/account';
+import { exportLinkSig, exportObjectKey } from '../routes/account';
 import { AuthToken, Consent, DataRequest, OtpCode } from '../models/auth';
 import { Session, User } from '../models/core';
 import { Photo } from '../models/profile';
@@ -66,9 +64,7 @@ export async function buildExport(ctx: AppContext, dataRequestId: string): Promi
       ...extra,
     };
 
-    await mkdir(ctx.env.EXPORT_DIR, { recursive: true });
     const json = JSON.stringify(payload, null, 2);
-    await writeFile(path.resolve(ctx.env.EXPORT_DIR, `${dataRequestId}.json`), json, { mode: 0o600 });
 
     // The download is a zip: the structured data plus the member's own photos (the sanitised full-size copies).
     const files: Record<string, Uint8Array> = { 'data.json': strToU8(json) };
@@ -84,7 +80,9 @@ export async function buildExport(ctx: AppContext, dataRequestId: string): Promi
     }
     const key = `${dataRequestId}.zip`;
     // Images are already compressed, so store them as they are.
-    await writeFile(path.resolve(ctx.env.EXPORT_DIR, key), zipSync(files, { level: 0 }), { mode: 0o600 });
+    // Kept in the documents bucket, not on this machine's disk: the API and the worker run on different machines in
+    // production, and the API has to be able to serve the file.
+    await ctx.storage.put('documents', exportObjectKey(key), Buffer.from(zipSync(files, { level: 0 })), 'application/zip');
 
     const expiresAt = new Date(Date.now() + 7 * DAY);
     await DataRequest.updateOne(
@@ -134,8 +132,7 @@ export async function purgeDueAccounts(ctx: AppContext, now: Date = new Date()):
 
       const exports = await DataRequest.find({ userId: id, kind: 'export', resultKey: { $exists: true } }).lean();
       for (const e of exports) {
-        const base = path.basename(String(e.resultKey)).replace(/\.(zip|json)$/, '');
-        for (const ext of ['zip', 'json']) await rm(path.resolve(ctx.env.EXPORT_DIR, `${base}.${ext}`), { force: true });
+        await ctx.storage.delete('documents', exportObjectKey(String(e.resultKey))).catch(() => undefined);
       }
       await Promise.all([
         Session.deleteMany({ userId: id }),

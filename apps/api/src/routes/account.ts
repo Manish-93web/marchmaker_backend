@@ -1,5 +1,3 @@
-import { createReadStream, existsSync } from 'node:fs';
-import path from 'node:path';
 import { Router } from 'express';
 import {
   accountPatchSchema,
@@ -21,6 +19,9 @@ import { DataRequest } from '../models/auth';
 import * as account from '../services/account';
 import { buildMe } from '../services/auth';
 
+/** Where a finished data export is kept: the documents bucket, under exports/. Only the file name is trusted from the record. */
+export const exportObjectKey = (resultKey: string): string => `exports/${resultKey.split(/[/\\]/).pop()}`;
+
 export function exportLinkSig(secret: string, id: string, exp: number): string {
   return hmac(secret, `export:${id}:${exp}`);
 }
@@ -40,13 +41,12 @@ export function accountRouter(ctx: AppContext): Router {
       }
       const dr = await DataRequest.findOne({ _id: id, kind: 'export', status: 'ready' });
       if (!dr?.resultKey) throw notFound('This export is no longer available');
-      const file = path.resolve(ctx.env.EXPORT_DIR, path.basename(dr.resultKey));
-      if (!existsSync(file)) throw notFound('This export is no longer available');
-      const isZip = file.endsWith('.zip');
-      res.setHeader('Content-Type', isZip ? 'application/zip' : 'application/json; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="marchmaker-data-export.${isZip ? 'zip' : 'json'}"`);
+      const key = exportObjectKey(dr.resultKey);
+      if (!(await ctx.storage.head('documents', key))) throw notFound('This export is no longer available');
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="marchmaker-data-export.zip"');
       res.setHeader('Cache-Control', 'no-store');
-      createReadStream(file).pipe(res);
+      res.send(await ctx.storage.get('documents', key));
     }),
   );
 

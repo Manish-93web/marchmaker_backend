@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
+import { readExport } from './helpers/exportFile';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import mongoose from 'mongoose';
@@ -276,7 +277,7 @@ describe('assessments: data rights', () => {
     await finish(m, 'family', 4);
     const exp = await m.send('post', '/account/export').expect(202);
     await buildExport(t.ctx, exp.body.id);
-    const json = JSON.parse(readFileSync(path.join(t.env.EXPORT_DIR, `${exp.body.id}.json`), 'utf8'));
+    const json = await readExport(t.ctx.storage, exp.body.id);
     expect(json.assessments).toHaveLength(1);
     expect(json.assessments[0].answers.f1).toBe(4);
     expect(json.assessments[0].result.length).toBeGreaterThan(0);

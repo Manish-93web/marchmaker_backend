@@ -1,7 +1,3 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
@@ -38,7 +34,6 @@ beforeEach(async () => {
 function setup() {
   const env = loadEnv({
     NODE_ENV: 'test',
-    EXPORT_DIR: mkdtempSync(path.join(tmpdir(), 'mm-export-')),
   } as NodeJS.ProcessEnv);
   const mailer = new MemoryMailer();
   const sms = new MemorySms();
@@ -377,7 +372,7 @@ describe('account lifecycle', () => {
     await buildExport(t.ctx, reqRes.body.id);
     const dr = await DataRequest.findById(reqRes.body.id);
     expect(dr?.status).toBe('ready');
-    expect(existsSync(path.join(t.env.EXPORT_DIR, `${reqRes.body.id}.json`))).toBe(true);
+    expect(await t.ctx.storage.head('documents', `exports/${reqRes.body.id}.zip`)).not.toBeNull();
 
     const link = t.mailer.last('asha@example.com')!.text.match(/https?:\/\/\S+download\?exp=\d+&sig=[a-f0-9]+/)![0];
     const url = new URL(link);
@@ -407,7 +402,7 @@ describe('account lifecycle', () => {
     await Photo.create({ userId: u!._id, key: 'raw/1', status: 'approved', variants: { lg: 'p/lg1.jpg' }, order: 0 });
     const r = await agent.post('/api/v1/account/export').set('x-csrf-token', csrf).expect(202);
     await buildExport(t.ctx, r.body.id);
-    const zip = unzipSync(new Uint8Array(readFileSync(path.join(t.env.EXPORT_DIR, `${r.body.id}.zip`))));
+    const zip = unzipSync(new Uint8Array(await t.ctx.storage.get('documents', `exports/${r.body.id}.zip`)));
     expect(Object.keys(zip)).toEqual(expect.arrayContaining(['data.json', 'photos/photo-1.jpg']));
     expect(strFromU8(zip['photos/photo-1.jpg']!)).toBe('jpegbytes');
   });

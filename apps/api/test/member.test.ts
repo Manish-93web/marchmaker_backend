@@ -1,4 +1,5 @@
 import { mkdtempSync } from 'node:fs';
+import { readExport } from './helpers/exportFile';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import mongoose from 'mongoose';
@@ -405,8 +406,7 @@ describe('data lifecycle', () => {
     const exp = await m.send('post', '/account/export').expect(202);
     await buildExport(t.ctx, exp.body.id);
     expect((await DataRequest.findById(exp.body.id))?.status).toBe('ready');
-    const file = await (await import('node:fs/promises')).readFile(path.join(t.env.EXPORT_DIR, `${exp.body.id}.json`), 'utf8');
-    const json = JSON.parse(file);
+    const json = await readExport(t.ctx.storage, exp.body.id);
     expect(json.profile.data.basics.firstName).toBe('Asha');
     expect(json.profile.data.education_career.incomeBand).toBe('15-25 lakh');
     expect(json.preferences).toHaveLength(1);

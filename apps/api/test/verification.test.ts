@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
+import { readExport } from './helpers/exportFile';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import mongoose from 'mongoose';
@@ -378,7 +379,7 @@ describe('retention', () => {
 
     const exp = await m.post('/account/export').expect(202);
     await buildExport(t.ctx, exp.body.id);
-    const json = JSON.parse(readFileSync(path.join(t.env.EXPORT_DIR, `${exp.body.id}.json`), 'utf8'));
+    const json = await readExport(t.ctx.storage, exp.body.id);
     expect(json.verification).toHaveLength(1);
     expect(json.verification[0]).toMatchObject({ method: 'manual', documentType: 'pan', documentLast4: '234F' });
     expect(JSON.stringify(json.verification)).not.toMatch(/identity\//);

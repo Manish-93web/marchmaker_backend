@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
+import { readExport } from './helpers/exportFile';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import mongoose from 'mongoose';
@@ -526,7 +527,7 @@ describe('credits and data rights', () => {
 
     const exp = await a.post('/account/export').expect(202);
     await buildExport(t.ctx, exp.body.id);
-    const json = JSON.parse(readFileSync(path.join(t.env.EXPORT_DIR, `${exp.body.id}.json`), 'utf8'));
+    const json = await readExport(t.ctx.storage, exp.body.id);
     expect(json.introductions[0]).toMatchObject({ state: 'mutually_accepted', myFirstNote: NOTE });
     expect(json.messagesSent.map((m: { body: string }) => m.body)).toContain('See you on the weekend!');
     expect(JSON.stringify(json)).not.toContain(b.id);

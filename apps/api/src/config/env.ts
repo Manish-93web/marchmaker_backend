@@ -39,7 +39,6 @@ const envSchema = z.object({
   SMS_PROVIDER: z.enum(['mock', 'msg91']).default('mock'),
   MSG91_AUTH_KEY: z.string().optional(),
   MSG91_OTP_TEMPLATE_ID: z.string().optional(),
-  EXPORT_DIR: z.string().default('./.data/exports'),
   TOTP_ISSUER: z.string().default('Marchmaker'),
 
   /** OAuth client id for Sign in with Google (Google Cloud console). Unset hides the button. */

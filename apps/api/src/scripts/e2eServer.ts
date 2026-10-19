@@ -35,7 +35,7 @@ async function main() {
   const mongod = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
   await mongoose.connect(mongod.getUri());
 
-  const env = loadEnv({ NODE_ENV: 'test', EXPORT_DIR: './.data/e2e-exports' } as NodeJS.ProcessEnv);
+  const env = loadEnv({ NODE_ENV: 'test' } as NodeJS.ProcessEnv);
   const log = createLogger('warn');
   const mailer = new MemoryMailer();
   const ctx = buildContext({ env, log, mailer, sms: new MemorySms() });
