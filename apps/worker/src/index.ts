@@ -6,7 +6,7 @@ import { captureError, initSentry } from '@marchmaker/api/sentry';
 import { createLogger } from '@marchmaker/api/logger';
 import { createWorkerContext, registerHandlers, runReleaseTick, runSweeps } from './handlers';
 import { relayOutboxOnce } from './outbox';
-import { startQueues, type Queues } from './queues';
+import { dispatchInProcess, startQueues, type Queues } from './queues';
 
 async function main() {
   const env = await resolveKmsKeys(loadEnv());
@@ -21,13 +21,14 @@ async function main() {
   if (env.REDIS_URL) {
     queues = startQueues(env.REDIS_URL, log);
   } else {
-    log.warn('REDIS_URL not set: outbox events are logged but not processed (dev mode)');
+    log.warn('REDIS_URL not set: running events in this process, without retries (development only)');
   }
 
   const publish =
     queues?.publish ??
     (async (e) => {
-      log.info({ eventType: e.eventType, id: e.id }, 'outbox event (no queue configured)');
+      log.info({ eventType: e.eventType, id: e.id }, 'outbox event handled in process (no queue configured)');
+      await dispatchInProcess(e);
     });
 
   let stopping = false;

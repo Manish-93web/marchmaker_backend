@@ -15,6 +15,18 @@ export function registerHandler(eventType: string, handler: EventHandler): void 
   handlers.set(eventType, [...(handlers.get(eventType) ?? []), handler]);
 }
 
+/**
+ * Development without Redis: runs the registered handlers straight away in this process, so photos get processed and
+ * emails get sent. There are no retries or dead-letter queue here; a failure is thrown back to the outbox relay,
+ * which tries again later. Production always uses the Redis queue.
+ */
+export async function dispatchInProcess(event: OutboxEvent): Promise<void> {
+  const list = handlers.get(event.eventType);
+  if (!list?.length) return;
+  const job = { id: event.id, name: event.eventType, data: event.payload ?? {}, attemptsMade: 0, opts: { attempts: 1 } } as unknown as Job;
+  for (const handler of list) await handler({ eventType: event.eventType, payload: event.payload ?? {} }, job);
+}
+
 export interface Queues {
   publish: (event: OutboxEvent) => Promise<void>;
   close: () => Promise<void>;
