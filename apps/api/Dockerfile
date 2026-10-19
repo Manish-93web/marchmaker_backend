@@ -22,6 +22,8 @@ WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=build /repo/apps/api/dist ./dist
 COPY --from=build /repo/apps/api/migrations ./migrations
+# Invoice PDFs embed these fonts (the rupee sign is not in the built-in PDF fonts).
+COPY --from=build /repo/apps/api/assets ./assets
 COPY --from=build /repo/apps/api/migrate-mongo-config.cjs ./migrate-mongo-config.cjs
 COPY --from=build /repo/node_modules ./node_modules
 COPY --from=build /repo/apps/api/node_modules ./apps/api/node_modules
