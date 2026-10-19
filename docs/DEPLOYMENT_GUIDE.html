@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0}</style>
+<title>Marchmaker Deployment Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a sticky contents column beside a single reading column; the contents fold into a menu on phones. */
+:root {
+  --bg: #F6F6FA;
+  --surface: #FFFFFF;
+  --ink: #1B1A24;
+  --muted: #5E5B6E;
+  --line: #E1E0EA;
+  --accent: #5B2A86;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #EFE8F7;
+  --code-bg: #EFEEF5;
+  --ok: #17724B;
+  --ok-bg: #E5F5EC;
+  --warn: #8F4A00;
+  --warn-bg: #FFF1DC;
+  --bad: #B42318;
+  --bad-bg: #FDECEA;
+  --info: #1D4F91;
+  --info-bg: #E6EFFB;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14131B; --surface: #1C1B26; --ink: #ECEBF3; --muted: #A9A6BC; --line: #2E2C3C;
+    --accent: #C9A6F2; --accent-ink: #1A1024; --accent-soft: #2A2240; --code-bg: #232230;
+    --ok: #6FD3A2; --ok-bg: #10291E; --warn: #F0B866; --warn-bg: #33270F;
+    --bad: #FF9A8F; --bad-bg: #351615; --info: #8DB7F2; --info-bg: #14233A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14131B; --surface: #1C1B26; --ink: #ECEBF3; --muted: #A9A6BC; --line: #2E2C3C;
+  --accent: #C9A6F2; --accent-ink: #1A1024; --accent-soft: #2A2240; --code-bg: #232230;
+  --ok: #6FD3A2; --ok-bg: #10291E; --warn: #F0B866; --warn-bg: #33270F;
+  --bad: #FF9A8F; --bad-bg: #351615; --info: #8DB7F2; --info-bg: #14233A;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1.25rem; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.65; padding-inline: 16px; padding-block: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+.shell { max-width: 1120px; margin-inline: auto; display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 48px; padding-block: 32px 80px; }
+.toc { position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; font-size: 14px; padding-right: 8px; }
+.toc h2 { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.toc a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; border-left: 2px solid transparent; }
+.toc a:hover { background: var(--accent-soft); color: var(--ink); }
+.toc a.on { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); font-weight: 500; }
+.toc .grp { margin: 14px 0 4px 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.menu { display: none; }
+
+main { min-width: 0; max-width: 780px; }
+header.top { padding-bottom: 24px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.kicker { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin: 0 0 8px; }
+h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); line-height: 1.15; margin: 0 0 12px; font-weight: 600; text-wrap: balance; }
+.lede { font-size: 1.08rem; color: var(--muted); margin: 0; max-width: 62ch; }
+section { padding-top: 40px; }
+h2.sec { font-size: 1.55rem; line-height: 1.25; margin: 0 0 6px; font-weight: 600; text-wrap: balance; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+h2.sec .tag { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; background: var(--accent-soft); color: var(--accent); padding: 3px 9px; border-radius: 999px; font-weight: 600; }
+.sec-sub { color: var(--muted); margin: 0 0 20px; max-width: 64ch; }
+h3 { font-size: 1.08rem; margin: 28px 0 8px; font-weight: 600; }
+p { margin: 0 0 12px; max-width: 70ch; }
+ul, ol { padding-left: 1.25rem; margin: 0 0 14px; }
+li { margin-bottom: 6px; max-width: 72ch; }
+li > ul, li > ol { margin-top: 6px; margin-bottom: 4px; }
+strong { font-weight: 600; }
+code { font-family: var(--font-mono); font-size: .88em; background: var(--code-bg); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+kbd { font-family: var(--font-mono); font-size: .82em; background: var(--surface); border: 1px solid var(--line); border-bottom-width: 2px; padding: 0 6px; border-radius: 5px; }
+
+/* sequential steps */
+ol.steps { list-style: none; padding: 0; margin: 14px 0 18px; counter-reset: s; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+ol.steps > li { counter-increment: s; position: relative; padding: 14px 16px 14px 56px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin: 0; max-width: none; min-width: 0; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 14px; top: 13px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 600; font-size: 14px; }
+ol.steps > li > :last-child { margin-bottom: 0; }
+.expect { display: block; margin-top: 8px; padding: 8px 12px; background: var(--ok-bg); color: var(--ok); border-radius: 8px; font-size: .93rem; }
+.expect b { font-weight: 600; }
+
+/* callouts */
+.note { border-radius: 10px; padding: 12px 16px; margin: 16px 0; border: 1px solid transparent; max-width: 74ch; }
+.note > :last-child { margin-bottom: 0; }
+.note .t { font-weight: 600; display: block; margin-bottom: 2px; font-size: .86rem; letter-spacing: .06em; text-transform: uppercase; }
+.note.info { background: var(--info-bg); color: var(--ink); border-color: color-mix(in srgb, var(--info) 35%, transparent); }
+.note.info .t { color: var(--info); }
+.note.warn { background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.note.warn .t { color: var(--warn); }
+.note.bad { background: var(--bad-bg); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+.note.bad .t { color: var(--bad); }
+
+/* code with copy */
+.code { position: relative; margin: 10px 0 16px; }
+.code pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; padding-right: 76px; overflow-x: auto; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; }
+.code .lbl { position: absolute; left: 12px; top: -10px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-size: 11px; padding: 0 8px; border-radius: 999px; font-family: var(--font-body); letter-spacing: .06em; text-transform: uppercase; }
+button.copy { position: absolute; right: 8px; top: 8px; font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+button.copy:hover { border-color: var(--accent); color: var(--accent); }
+
+/* access cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 14px 0 20px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.card h4 { margin: 0 0 8px; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.kv { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px dashed var(--line); min-width: 0; }
+.kv:first-of-type { border-top: 0; }
+.kv span.k { color: var(--muted); font-size: .86rem; flex: none; }
+.kv span.v { font-family: var(--font-mono); font-size: .88rem; overflow-wrap: anywhere; text-align: right; min-width: 0; }
+.kv button.copy { position: static; flex: none; padding: 2px 8px; }
+.card.admin { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* tables */
+.tw { overflow-x: auto; margin: 12px 0 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; min-width: 520px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--bg); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td code { overflow-wrap: anywhere; }
+
+/* flow */
+.flow { list-style: none; padding: 0; margin: 14px 0 20px; display: flex; flex-wrap: wrap; gap: 8px 6px; align-items: center; }
+.flow li { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 13px; font-size: .88rem; max-width: none; }
+.flow li.admin { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+.flow li.sep { background: none; border: 0; padding: 0; color: var(--muted); }
+
+/* checklist */
+.check { list-style: none; padding: 0; margin: 12px 0 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.check li { margin: 0; max-width: none; }
+.check label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; padding: 9px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
+.check input { margin-top: 5px; width: 17px; height: 17px; accent-color: var(--accent); flex: none; }
+.check input:checked + span { color: var(--muted); text-decoration: line-through; }
+.progress { font-size: .9rem; color: var(--muted); margin-bottom: 8px; }
+
+details.fold { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0 16px; margin: 10px 0; }
+details.fold summary { cursor: pointer; padding: 12px 0; font-weight: 500; }
+details.fold[open] { padding-bottom: 6px; }
+
+.pill { display: inline-block; font-size: .78rem; padding: 1px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 500; white-space: nowrap; }
+footer.end { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 0; padding-block: 20px 60px; }
+  .toc { display: none; }
+  .menu { display: block; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; margin: 0 -16px 12px; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .menu summary { cursor: pointer; font-weight: 500; padding: 6px 0; }
+  .menu ol { list-style: none; padding: 6px 0 4px; margin: 0; display: grid; gap: 2px; max-height: 60vh; overflow-y: auto; }
+  .menu a { display: block; padding: 7px 8px; border-radius: 6px; text-decoration: none; color: var(--ink); }
+  .menu a:hover { background: var(--accent-soft); }
+  ol.steps > li { padding: 14px 14px 14px 50px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol id="toc-list"></ol>
+  </nav>
+
+  <main>
+    <details class="menu"><summary>Contents</summary><ol id="menu-list"></ol></details>
+
+    <header class="top">
+      <p class="kicker">Deployment guide</p>
+      <h1>Marchmaker Deployment Guide</h1>
+      <p class="lede">Put the member site and the admin console on Vercel, and the API and background worker on Render. Every account to open, every value to copy and every button to press is listed in the order you need it.</p>
+    </header>
+
+    <!-- ============================================================ overview -->
+    <section id="overview">
+      <h2 class="sec">Start here <span class="tag">Overview</span></h2>
+      <p class="sec-sub">Read this page once before you touch anything. It shows what runs where and why the order of the steps matters.</p>
+
+      <h3>What runs where</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Part</th><th>Runs on</th><th>Address (example names)</th></tr></thead>
+        <tbody>
+          <tr><td>Member site</td><td>Vercel project <code>marchmaker-web</code></td><td><code>https://marchmaker-web.vercel.app</code></td></tr>
+          <tr><td>Admin console</td><td>Vercel project <code>marchmaker-admin</code></td><td><code>https://marchmaker-admin.vercel.app</code></td></tr>
+          <tr><td>API</td><td>Render Web Service <code>marchmaker-api</code></td><td><code>https://marchmaker-api.onrender.com</code></td></tr>
+          <tr><td>Background worker (photos, email, matching, invoices)</td><td>Render Background Worker <code>marchmaker-worker</code></td><td>No public address</td></tr>
+          <tr><td>Job queue</td><td>Render Key Value (Redis) <code>marchmaker-redis</code></td><td>Private address inside Render</td></tr>
+          <tr><td>Database</td><td>MongoDB Atlas</td><td>Connection string</td></tr>
+          <tr><td>Photos, ID images, exports, invoices</td><td>Cloudflare R2 (three private buckets)</td><td>S3-compatible address</td></tr>
+          <tr><td>Email, SMS, payments, error reports</td><td>Resend, MSG91, Razorpay, Sentry</td><td>Their dashboards</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>How a request travels</h3>
+      <ol class="flow" aria-label="Request path">
+        <li>Browser</li><li class="sep">→</li>
+        <li>Vercel (site files)</li><li class="sep">→</li>
+        <li class="admin">/api/… forwarded by Vercel</li><li class="sep">→</li>
+        <li>Render API</li><li class="sep">→</li>
+        <li>MongoDB · Redis · R2</li>
+      </ol>
+      <p>The sites call <code>/api/v1/…</code> on <strong>their own address</strong>. Vercel forwards those calls to the Render API. To the browser everything is one website, so sign-in cookies work without any cross-site settings. The forwarding rule lives in <code>apps/web/vercel.json</code> and <code>apps/admin/vercel.json</code>.</p>
+
+      <h3>The order of work</h3>
+      <ol>
+        <li>Open the outside accounts and collect their keys (sections 1 and 4 to 9).</li>
+        <li>Put the code on GitHub (section 2).</li>
+        <li>Create the secrets (section 3).</li>
+        <li>Create Redis, the shared settings, the API and the worker on Render (sections 10 to 13).</li>
+        <li>Prepare the empty database and create the first admin (section 14).</li>
+        <li>Point the Vercel files at your API, then create the two Vercel projects (sections 15 to 17).</li>
+        <li>Connect everything together and test (sections 18 and 19).</li>
+      </ol>
+      <div class="note warn"><span class="t">The API refuses to start with test settings</span><p>In production the API checks its own settings and stops with a list of what is wrong. It will not start with test email, test SMS, test payments, development secrets, local file storage, no Redis, or no error reporting. That is on purpose. It means every account in section 1 is needed before the first successful start.</p></div>
+
+      <h3>What is already prepared in the code</h3>
+      <p>While preparing this guide I fixed things that would have stopped a first deployment. They are committed in both repos:</p>
+      <ul>
+        <li><strong>Docker builds that work.</strong> The old API and worker Dockerfiles could not build a runnable image. They now bundle the shared packages and install only production dependencies.</li>
+        <li><strong>The frontend builds on its own.</strong> It used to read a package from a folder in the backend repo, which does not exist on Vercel. A copy now lives in <code>packages/shared</code>. A script keeps it in step with the backend (section 2).</li>
+        <li><strong>Data exports use object storage.</strong> They were written to one machine's disk and read from another's, which cannot work on Render. They now live in the documents bucket.</li>
+        <li><strong>Client address behind two proxies.</strong> A new setting, <code>TRUST_PROXY_HOPS</code>, makes rate limits count real visitors and not Vercel's address.</li>
+        <li><strong>Vercel settings</strong> for both sites, including the API forwarding rule and security headers.</li>
+      </ul>
+      <p>I could not run Docker or Render on this computer. The Docker files were checked by building the same bundles and starting them with a production-style install, but the first real build happens on Render. Section 22 lists the likely first-build problems.</p>
+    </section>
+
+    <!-- ============================================================ 1 -->
+    <section id="accounts">
+      <h2 class="sec">1. Accounts you need <span class="tag">Prepare</span></h2>
+      <p class="sec-sub">Open all of these first. Some take days to approve. Prices change, so check each site's current pricing page.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Service</th><th>Used for</th><th>Needed?</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>GitHub</td><td>Holds the code. Render and Vercel build from it.</td><td>Yes</td><td>Both repos, <code>marchmaker_backend</code> and <code>marchmaker_frontend</code>.</td></tr>
+          <tr><td>MongoDB Atlas</td><td>Database</td><td>Yes</td><td>Free M0 works for a trial. Use a paid cluster (M10 or larger) for real members, because it has backups.</td></tr>
+          <tr><td>Render</td><td>API, worker and Redis</td><td>Yes</td><td>Use paid Starter instances for the API and worker. Free web services go to sleep after a quiet period and cannot run a worker.</td></tr>
+          <tr><td>Vercel</td><td>Member site and admin console</td><td>Yes</td><td>The free Hobby plan is for non-commercial use. A business should use Pro.</td></tr>
+          <tr><td>Cloudflare (R2)</td><td>Photos, ID images, exports, invoices</td><td>Yes</td><td>Any S3-compatible storage works. R2 has no download fees. Needs a card on file.</td></tr>
+          <tr><td>Resend, plus a domain you own</td><td>Email (sign-up links, notices, invoices)</td><td>Yes</td><td>You must prove you own a domain by adding DNS records. Without a domain, mail goes only to your own address.</td></tr>
+          <tr><td>MSG91</td><td>One-time codes by SMS</td><td>Yes</td><td>Indian SMS needs DLT registration and an approved template, which can take days. Start early.</td></tr>
+          <tr><td>Razorpay</td><td>Payments</td><td>Yes</td><td>Start with test keys. Live keys need business approval.</td></tr>
+          <tr><td>Sentry</td><td>Error reports</td><td>Yes</td><td>The free plan is enough to start.</td></tr>
+          <tr><td>Google Cloud</td><td>“Sign in with Google”</td><td>Optional</td><td>Leave it out and the button stays hidden.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note info"><span class="t">If you cannot get SMS approved yet</span><p>The API will not start in production with SMS switched off, because phone sign-in would silently fail. Until MSG91 is approved you cannot complete a production start. A trial on your own computer (see the Testing Guide) works in the meantime.</p></div>
+      <p>For legal and business items before real launch (company and GST details, legal documents, a backup test, a payment and refund test) work through <code>docs/LAUNCH_CHECKLIST.md</code> in the backend repo after this guide.</p>
+    </section>
+
+    <!-- ============================================================ 2 -->
+    <section id="repos">
+      <h2 class="sec">2. Put the code on GitHub <span class="tag">Prepare</span></h2>
+      <p class="sec-sub">Render and Vercel build from the <code>main</code> branch. Right now the latest work is on other branches.</p>
+      <div class="note warn"><span class="t">Check this first</span><p>The fixes described in the overview exist only on local branches (<code>dev-local-testing</code> in the backend and <code>google-signin</code> in the frontend). Until they are merged and pushed to <code>main</code>, a deployment would build the old code and fail.</p></div>
+      <ol class="steps">
+        <li><strong>Backend.</strong> In a terminal:
+          <div class="code"><span class="lbl">Terminal</span><pre>cd marchmaker_backend
+git status
+git checkout main
+git merge --ff-only dev-local-testing
+git push origin main</pre><button class="copy">Copy</button></div>
+          <span class="expect"><b>Result:</b> the push succeeds. If the merge says it cannot fast-forward, someone changed <code>main</code> in between. Ask for help before forcing anything.</span>
+        </li>
+        <li><strong>Frontend.</strong>
+          <div class="code"><span class="lbl">Terminal</span><pre>cd ../marchmaker_frontend
+git status
+git checkout main
+git merge --ff-only google-signin
+git push origin main</pre><button class="copy">Copy</button></div>
+        </li>
+        <li><strong>Check both repos on github.com.</strong> The latest commit on <code>main</code> should mention the deployment changes.</li>
+      </ol>
+
+      <h3>Keeping the shared package in step</h3>
+      <p>The frontend keeps its own copy of the backend's shared package. Whenever the backend's <code>packages/shared</code> changes, update the copy and commit it. Keep the two repos next to each other in one folder for this.</p>
+      <div class="code"><span class="lbl">In marchmaker_frontend</span><pre>pnpm sync:shared     # copy from the backend
+pnpm check:shared    # fails if the copy is out of date</pre><button class="copy">Copy</button></div>
+      <details class="fold"><summary>Two leftover folders you can delete</summary>
+        <p>While testing the Docker bundles I created two temporary folders beside the repos: <code>_deploy_tmp</code> and <code>_deploy_tmp2</code>. They are not part of either repo and are safe to delete.</p>
+      </details>
+    </section>
+
+    <!-- ============================================================ 3 -->
+    <section id="secrets">
+      <h2 class="sec">3. Create your secrets <span class="tag">Prepare</span></h2>
+      <p class="sec-sub">These values protect your members' data. Generate them yourself, once, and save them in a password manager.</p>
+      <div class="code"><span class="lbl">Terminal (needs Node.js)</span><pre># 1 and 2: the two session secrets (run twice, use each result once)
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+
+# 3 and 4: the encryption key and the lookup key (run twice, use each result once)
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+
+# 5: the Razorpay webhook secret (any long random string)
+node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"</pre><button class="copy">Copy</button></div>
+      <div class="tw"><table>
+        <thead><tr><th>Name</th><th>What it does</th><th>If you lose or change it</th></tr></thead>
+        <tbody>
+          <tr><td><code>JWT_ACCESS_SECRET</code></td><td>Signs short sign-in tokens.</td><td>Everyone is signed out. No data is lost.</td></tr>
+          <tr><td><code>JWT_REFRESH_SECRET</code></td><td>Signs long sign-in tokens and email links.</td><td>Everyone is signed out and old links stop working.</td></tr>
+          <tr><td><code>FIELD_ENCRYPTION_KEY</code></td><td>Encrypts birth dates, phone numbers and other private fields.</td><td><strong>Encrypted data becomes unreadable for ever.</strong> Back it up.</td></tr>
+          <tr><td><code>FIELD_BLIND_INDEX_KEY</code></td><td>Lets the system find a phone number without storing it in the clear.</td><td><strong>Never change it.</strong> Existing phone numbers stop matching.</td></tr>
+          <tr><td><code>RAZORPAY_WEBHOOK_SECRET</code></td><td>Proves payment notices come from Razorpay.</td><td>Set the same value in Razorpay again.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note bad"><span class="t">Never share or commit these</span><p>Do not paste them into chat, email or a file in the repo. Render and Vercel store them for you. Put a copy only in your password manager.</p></div>
+    </section>
+
+    <!-- ============================================================ 4 -->
+    <section id="mongo">
+      <h2 class="sec">4. MongoDB Atlas <span class="tag">Accounts</span></h2>
+      <p class="sec-sub">The database. The app needs a replica set (transactions), which every Atlas cluster is.</p>
+      <ol class="steps">
+        <li>Sign in at <a href="https://cloud.mongodb.com" target="_blank" rel="noopener">cloud.mongodb.com</a> and create a project named <code>marchmaker</code>.</li>
+        <li><strong>Create a cluster.</strong> Pick <strong>M10</strong> or larger for real use (it includes backups) or the free <strong>M0</strong> for a trial. Choose a provider and a region close to your Render region. AWS Mumbai (<code>ap-south-1</code>) is a good match for India.</li>
+        <li><strong>Create a database user.</strong> Under <em>Database Access</em> add a user named <code>marchmaker_app</code> with a long random password. Give it the built-in role <strong>Read and write to any database</strong> or, better, restrict it to the database <code>marchmaker</code>.</li>
+        <li><strong>Allow Render to connect.</strong> Under <em>Network Access</em> choose one:
+          <ul>
+            <li><strong>Simplest:</strong> add <code>0.0.0.0/0</code> (anywhere). The connection is encrypted and needs the password, but anyone who gets the password could use it.</li>
+            <li><strong>Tighter:</strong> after you create the Render services (sections 12 and 13) open each service, find its <em>Outbound</em> addresses, and add them here. Do this only if you are comfortable with the extra steps.</li>
+          </ul>
+        </li>
+        <li><strong>Copy the connection string.</strong> Press <em>Connect</em>, then <em>Drivers</em>. It looks like the line below. Replace the password and add the database name <code>marchmaker</code> before the <code>?</code>:
+          <div class="code"><span class="lbl">Example</span><pre>mongodb+srv://marchmaker_app:YOUR-PASSWORD@cluster0.abcde.mongodb.net/marchmaker?retryWrites=true&amp;w=majority</pre><button class="copy">Copy</button></div>
+          <span class="expect"><b>Result:</b> you have one string. This is <code>MONGODB_URI</code>. If the password has symbols such as <code>@</code> or <code>#</code>, replace each with its percent code (<code>%40</code>, <code>%23</code>) or choose a password with only letters and digits.</span>
+        </li>
+        <li>On a paid cluster open <em>Backup</em> and confirm automated backups are on.</li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ 5 -->
+    <section id="storage">
+      <h2 class="sec">5. Cloudflare R2 storage <span class="tag">Accounts</span></h2>
+      <p class="sec-sub">Three private buckets hold photos, ID images, and documents such as exports and invoices. You can use Amazon S3 instead. See the note at the end.</p>
+      <ol class="steps">
+        <li>Sign in to <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a>, open <strong>R2 Object Storage</strong> and enable it.</li>
+        <li><strong>Create three buckets</strong> with these exact names, a location hint of Asia-Pacific, and the default private setting. Never turn on public access.
+          <ul>
+            <li><code>marchmaker-photos</code></li>
+            <li><code>marchmaker-identity</code></li>
+            <li><code>marchmaker-documents</code></li>
+          </ul>
+        </li>
+        <li><strong>Note your account address.</strong> On the R2 overview page copy the S3 API address. It looks like <code>https://ACCOUNT_ID.r2.cloudflarestorage.com</code>. This is <code>S3_ENDPOINT</code>.</li>
+        <li><strong>Create the general access key.</strong> Open <em>Manage API tokens</em>, create a token with permission <strong>Object Read &amp; Write</strong>, limited to the buckets <code>marchmaker-photos</code> and <code>marchmaker-documents</code>. Copy the <em>Access Key ID</em> and <em>Secret Access Key</em>. They are shown once. These are <code>S3_ACCESS_KEY_ID</code> and <code>S3_SECRET_ACCESS_KEY</code>.</li>
+        <li><strong>Create the identity access key.</strong> Make a second token with <strong>Object Read &amp; Write</strong> limited only to <code>marchmaker-identity</code>. These are <code>S3_IDENTITY_ACCESS_KEY_ID</code> and <code>S3_IDENTITY_SECRET_ACCESS_KEY</code>. This keeps ID images behind a separate key.</li>
+        <li><strong>Allow uploads from your sites.</strong> Members' browsers upload straight to the buckets, so each bucket needs a CORS rule. For each of the three buckets open <em>Settings</em>, then <em>CORS policy</em>, and paste this. Use your real site addresses:
+          <div class="code"><span class="lbl">CORS policy for all three buckets</span><pre>[
+  {
+    "AllowedOrigins": [
+      "https://marchmaker-web.vercel.app",
+      "https://marchmaker-admin.vercel.app"
+    ],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]</pre><button class="copy">Copy</button></div>
+          <span class="expect"><b>Result:</b> three buckets, two key pairs and one address. If your sites later move to your own domain, come back and add those addresses (section 20).</span>
+        </li>
+      </ol>
+      <div class="note info"><span class="t">Using Amazon S3 instead</span><p>Create the same three buckets in an AWS region such as <code>ap-south-1</code>, create IAM users with read and write on them, and set <code>S3_REGION=ap-south-1</code>. Leave <code>S3_ENDPOINT</code> unset. Add the same CORS rules in each bucket's permissions.</p></div>
+    </section>
+
+    <!-- ============================================================ 6 -->
+    <section id="email">
+      <h2 class="sec">6. Email with Resend <span class="tag">Accounts</span></h2>
+      <p class="sec-sub">Sign-up confirmations, password resets, notices and invoices all go through Resend.</p>
+      <ol class="steps">
+        <li>Create an account at <a href="https://resend.com" target="_blank" rel="noopener">resend.com</a>.</li>
+        <li><strong>Add your domain.</strong> Open <em>Domains</em>, press <em>Add Domain</em> and enter a domain you own, for example <code>mail.yourdomain.com</code> (a sub-domain keeps your main mail safe).</li>
+        <li><strong>Add the DNS records.</strong> Resend shows a short table of records. Add each one at the company where you bought the domain (its DNS settings page). Wait until Resend shows the domain as <strong>Verified</strong>. This can take from minutes to a few hours.</li>
+        <li><strong>Create an API key.</strong> Open <em>API Keys</em>, create one with <strong>Sending access</strong>, and copy it. This is <code>RESEND_API_KEY</code>.</li>
+        <li><strong>Choose the sender.</strong> It must use the verified domain, for example <code>Marchmaker &lt;hello@mail.yourdomain.com&gt;</code>. This is <code>EMAIL_FROM</code>. Pick a real support address you read for <code>SUPPORT_EMAIL</code>.</li>
+        <li><strong>The webhook comes later</strong> (section 18), once the API has an address.</li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ 7 -->
+    <section id="sms">
+      <h2 class="sec">7. SMS with MSG91 <span class="tag">Accounts</span></h2>
+      <p class="sec-sub">One-time codes for phone sign-in go by SMS. Indian carriers only deliver messages that use a registered template.</p>
+      <ol class="steps">
+        <li>Create an account at <a href="https://msg91.com" target="_blank" rel="noopener">msg91.com</a> and complete the business verification.</li>
+        <li><strong>Register on DLT</strong> with the telecom operator portal MSG91 points you to. Register your company, a sender ID and a content template for the code message. MSG91's support pages walk through this.</li>
+        <li>In MSG91 create an <strong>OTP template</strong> (a “flow”) that uses your approved DLT template. The code goes in as a variable.</li>
+        <li>Copy your <strong>Auth Key</strong> (this is <code>MSG91_AUTH_KEY</code>) and the <strong>Template ID</strong> of the OTP flow (this is <code>MSG91_OTP_TEMPLATE_ID</code>).</li>
+      </ol>
+      <div class="note info"><span class="t">Check the final wording</span><p>The exact screens and field names at MSG91 change over time. Follow their current instructions where they differ from this list. The two values you need are always the Auth Key and the Template ID.</p></div>
+    </section>
+
+    <!-- ============================================================ 8 -->
+    <section id="payments">
+      <h2 class="sec">8. Payments with Razorpay <span class="tag">Accounts</span></h2>
+      <p class="sec-sub">Start in test mode so you can try every payment without moving money.</p>
+      <ol class="steps">
+        <li>Create an account at <a href="https://razorpay.com" target="_blank" rel="noopener">razorpay.com</a>. Stay in <strong>Test mode</strong> (the switch in the dashboard header).</li>
+        <li>Open <em>Account &amp; Settings</em>, then <em>API Keys</em>, and generate a key. Copy the <strong>Key Id</strong> (<code>rzp_test_…</code>) and the <strong>Key Secret</strong>. These are <code>RAZORPAY_KEY_ID</code> and <code>RAZORPAY_KEY_SECRET</code>. The Key Id is also needed on the member site (<code>VITE_RAZORPAY_KEY_ID</code>).</li>
+        <li><strong>The webhook comes later</strong> (section 18), once the API has an address. You will use the secret you generated in section 3.</li>
+        <li>To take real money later, complete Razorpay's business verification, switch to live mode, generate live keys and replace the three values.</li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ 9 -->
+    <section id="sentry">
+      <h2 class="sec">9. Error reports with Sentry <span class="tag">Accounts</span></h2>
+      <p class="sec-sub">The API will not start without a Sentry address, so crashes are never invisible.</p>
+      <ol class="steps">
+        <li>Create an account at <a href="https://sentry.io" target="_blank" rel="noopener">sentry.io</a> and an organization.</li>
+        <li>Create a project, platform <strong>Node.js</strong>, called <code>marchmaker-backend</code>. Copy its <strong>DSN</strong> (a web address starting with <code>https://</code>). This is <code>SENTRY_DSN</code> for the API and the worker.</li>
+        <li>Optionally create a second project, platform <strong>React</strong>, called <code>marchmaker-web</code>, and copy its DSN for <code>VITE_SENTRY_DSN</code> on Vercel.</li>
+      </ol>
+      <h3>Optional: Google sign-in</h3>
+      <p>Follow section 6.5 of the Testing Guide to create a Google web client. You add your two Vercel addresses (and later your own domains) as <em>Authorized JavaScript origins</em>, and set <code>GOOGLE_CLIENT_ID</code> in the shared settings below. Publish the consent screen so every Google user can sign in, not only test users.</p>
+    </section>
+
+    <!-- ============================================================ 10 -->
+    <section id="redis">
+      <h2 class="sec">10. Render: Redis <span class="tag">Render</span></h2>
+      <p class="sec-sub">The job queue and shared rate limits. Create it first, because the API and worker need its address.</p>
+      <ol class="steps">
+        <li>Sign in at <a href="https://dashboard.render.com" target="_blank" rel="noopener">dashboard.render.com</a> and connect your GitHub account under <em>Account Settings</em> if you have not.</li>
+        <li>Press <strong>New +</strong>, then <strong>Key Value</strong> (Render's Redis-compatible store).</li>
+        <li>Name it <code>marchmaker-redis</code>. Choose the <strong>region</strong> you will use for everything (for India, Singapore is the closest). Remember it, because all Render services must be in the same region.</li>
+        <li>Choose a plan: <em>Free</em> for a trial (data is lost on restart), or <em>Starter</em> or larger for real use.</li>
+        <li>Set the <strong>Maxmemory Policy</strong> to <code>noeviction</code>. The job queue needs this so jobs are never dropped.</li>
+        <li>Under access control keep it private (allow only your Render services; add no outside addresses).</li>
+        <li>Press <strong>Create Key Value</strong>. When it is ready open it and copy the <strong>Internal Connection URL</strong>. It looks like <code>redis://red-abc123:6379</code>. This is <code>REDIS_URL</code>.</li>
+      </ol>
+      <p>If the free plan loses its data on a restart, queued jobs disappear from Redis. Events are stored in the database first and re-sent, so nothing is lost, but the paid plan avoids delays.</p>
+    </section>
+
+    <!-- ============================================================ 11 -->
+    <section id="render-env">
+      <h2 class="sec">11. Render: shared settings <span class="tag">Render</span></h2>
+      <p class="sec-sub">The API and the worker read the same settings. Create them once as an environment group, then attach the group to both.</p>
+      <ol class="steps">
+        <li>In the Render dashboard open <strong>Environment Groups</strong> (left menu or <em>New +</em>) and press <strong>New Environment Group</strong>.</li>
+        <li>Name it <code>marchmaker-shared</code>.</li>
+        <li>Add every row from the three tables below. Use <em>Add Environment Variable</em> for each, or <em>Add from .env</em> to paste several lines at once. Press <strong>Create Environment Group</strong> when done.</li>
+      </ol>
+      <div class="note warn"><span class="t">Addresses must be exact</span><p><code>APP_URL</code>, <code>ADMIN_URL</code> and <code>CORS_ORIGINS</code> must be <code>https</code>, with no slash at the end. They must match the Vercel addresses exactly. Choose the Vercel project names now (<code>marchmaker-web</code> and <code>marchmaker-admin</code> in this guide) so the addresses are known before the sites exist. If Vercel gives you a different address later, fix these three values and redeploy.</p></div>
+
+      <h3>Core settings</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Name</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td><code>NODE_ENV</code></td><td><code>production</code></td></tr>
+          <tr><td><code>LOG_LEVEL</code></td><td><code>info</code></td></tr>
+          <tr><td><code>MONGODB_URI</code></td><td>From section 4</td></tr>
+          <tr><td><code>REDIS_URL</code></td><td>From section 10 (the internal address)</td></tr>
+          <tr><td><code>JWT_ACCESS_SECRET</code></td><td>From section 3</td></tr>
+          <tr><td><code>JWT_REFRESH_SECRET</code></td><td>From section 3</td></tr>
+          <tr><td><code>FIELD_ENCRYPTION_KEY</code></td><td>From section 3</td></tr>
+          <tr><td><code>FIELD_BLIND_INDEX_KEY</code></td><td>From section 3</td></tr>
+          <tr><td><code>COOKIE_SECURE</code></td><td><code>true</code></td></tr>
+          <tr><td><code>TRUST_PROXY_HOPS</code></td><td><code>2</code> (Vercel, then Render)</td></tr>
+          <tr><td><code>APP_URL</code></td><td><code>https://marchmaker-web.vercel.app</code></td></tr>
+          <tr><td><code>ADMIN_URL</code></td><td><code>https://marchmaker-admin.vercel.app</code></td></tr>
+          <tr><td><code>CORS_ORIGINS</code></td><td><code>https://marchmaker-web.vercel.app,https://marchmaker-admin.vercel.app</code> (comma, no spaces)</td></tr>
+          <tr><td><code>SENTRY_DSN</code></td><td>From section 9</td></tr>
+          <tr><td><code>SENTRY_ENVIRONMENT</code></td><td><code>production</code></td></tr>
+          <tr><td><code>ONCALL_EMAIL</code></td><td>The address that should get alerts</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note bad"><span class="t">Do not add these</span><p>Never add <code>STAFF_MFA_REQUIRED=false</code> (production refuses it). Do not add <code>DNS_SERVERS</code> or <code>LOCAL_STORAGE_DIR</code>.</p></div>
+
+      <h3>Email, SMS, storage and payments</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Name</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td><code>EMAIL_PROVIDER</code></td><td><code>resend</code></td></tr>
+          <tr><td><code>RESEND_API_KEY</code></td><td>From section 6</td></tr>
+          <tr><td><code>RESEND_WEBHOOK_SECRET</code></td><td>Temporary text for now, for example <code>replace-me-after-section-18</code>. You replace it in section 18.</td></tr>
+          <tr><td><code>EMAIL_FROM</code></td><td><code>Marchmaker &lt;hello@mail.yourdomain.com&gt;</code></td></tr>
+          <tr><td><code>SUPPORT_EMAIL</code></td><td>Your support address</td></tr>
+          <tr><td><code>SMS_PROVIDER</code></td><td><code>msg91</code></td></tr>
+          <tr><td><code>MSG91_AUTH_KEY</code></td><td>From section 7</td></tr>
+          <tr><td><code>MSG91_OTP_TEMPLATE_ID</code></td><td>From section 7</td></tr>
+          <tr><td><code>OTP_CHANNEL</code></td><td><code>sms</code></td></tr>
+          <tr><td><code>STORAGE_PROVIDER</code></td><td><code>s3</code></td></tr>
+          <tr><td><code>S3_ENDPOINT</code></td><td>From section 5 (the R2 address)</td></tr>
+          <tr><td><code>S3_REGION</code></td><td><code>auto</code></td></tr>
+          <tr><td><code>S3_ACCESS_KEY_ID</code> and <code>S3_SECRET_ACCESS_KEY</code></td><td>The general key pair from section 5</td></tr>
+          <tr><td><code>S3_IDENTITY_ACCESS_KEY_ID</code> and <code>S3_IDENTITY_SECRET_ACCESS_KEY</code></td><td>The identity key pair from section 5</td></tr>
+          <tr><td><code>S3_BUCKET_PHOTOS</code></td><td><code>marchmaker-photos</code></td></tr>
+          <tr><td><code>S3_BUCKET_IDENTITY</code></td><td><code>marchmaker-identity</code></td></tr>
+          <tr><td><code>S3_BUCKET_DOCUMENTS</code></td><td><code>marchmaker-documents</code></td></tr>
+          <tr><td><code>PAYMENTS_PROVIDER</code></td><td><code>razorpay</code></td></tr>
+          <tr><td><code>RAZORPAY_KEY_ID</code> and <code>RAZORPAY_KEY_SECRET</code></td><td>From section 8</td></tr>
+          <tr><td><code>RAZORPAY_WEBHOOK_SECRET</code></td><td>From section 3</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Features switched off, and your company details</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Name</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td><code>KYC_PROVIDER</code></td><td><code>none</code> (a person checks IDs by hand in the admin console)</td></tr>
+          <tr><td><code>WHATSAPP_PROVIDER</code></td><td><code>none</code></td></tr>
+          <tr><td><code>PUSH_PROVIDER</code></td><td><code>none</code></td></tr>
+          <tr><td><code>CALLS_PROVIDER</code></td><td><code>none</code></td></tr>
+          <tr><td><code>ASTROLOGY_PROVIDER</code></td><td><code>none</code></td></tr>
+          <tr><td><code>IMAGE_MODERATION</code></td><td><code>none</code> (a person approves every photo anyway)</td></tr>
+          <tr><td><code>GST_SELLER_NAME</code></td><td>Your registered company name</td></tr>
+          <tr><td><code>GST_SELLER_GSTIN</code></td><td>Your real GSTIN</td></tr>
+          <tr><td><code>GST_SELLER_STATE_CODE</code></td><td>Two digits, for example <code>29</code></td></tr>
+          <tr><td><code>GST_SELLER_ADDRESS</code></td><td>Your registered address</td></tr>
+          <tr><td><code>GOOGLE_CLIENT_ID</code> (optional)</td><td>From section 9</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note warn"><span class="t">Invoices use your company details</span><p>If you skip the four <code>GST_SELLER_*</code> values, invoices are issued under a placeholder company and GSTIN. Set the real ones before the first real payment.</p></div>
+    </section>
+
+    <!-- ============================================================ 12 -->
+    <section id="render-api">
+      <h2 class="sec">12. Render: the API <span class="tag">Render</span></h2>
+      <ol class="steps">
+        <li>In the dashboard press <strong>New +</strong>, then <strong>Web Service</strong>.</li>
+        <li>Choose <strong>Build and deploy from a Git repository</strong>, then select <code>marchmaker_backend</code>. If it is not listed, press <em>Configure account</em> and give Render access to that repo.</li>
+        <li>Fill in the form:
+          <div class="tw"><table>
+            <thead><tr><th>Field</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Name</td><td><code>marchmaker-api</code></td></tr>
+              <tr><td>Region</td><td>The same region as Redis</td></tr>
+              <tr><td>Branch</td><td><code>main</code></td></tr>
+              <tr><td>Language / Runtime</td><td><strong>Docker</strong></td></tr>
+              <tr><td>Root Directory</td><td>Leave blank (the repo root)</td></tr>
+              <tr><td>Instance type</td><td><strong>Starter</strong> or larger</td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li>Open <strong>Advanced</strong> and set:
+          <div class="tw"><table>
+            <thead><tr><th>Field</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Dockerfile Path</td><td><code>./apps/api/Dockerfile</code></td></tr>
+              <tr><td>Docker Build Context Directory</td><td><code>.</code></td></tr>
+              <tr><td>Health Check Path</td><td><code>/healthz</code></td></tr>
+              <tr><td>Auto-Deploy</td><td>On Commit</td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li><strong>Attach the settings.</strong> Under <em>Environment</em> find <em>Linked Environment Groups</em> and link <code>marchmaker-shared</code>. You do not need to add <code>PORT</code>. Render sets it and the API reads it.</li>
+        <li>Press <strong>Create Web Service</strong>. The first build takes several minutes. Watch the <em>Logs</em> tab.
+          <span class="expect"><b>Result:</b> the log ends with <b>mongo connected</b> and <b>api listening</b>, and the service shows <strong>Live</strong>.</span>
+        </li>
+        <li><strong>Check it.</strong> Open <code>https://marchmaker-api.onrender.com/healthz</code> in a browser (use your real address, shown at the top of the service page).
+          <span class="expect"><b>Result:</b> a small message with status “ok”.</span>
+        </li>
+        <li>Write down the exact address. If it differs from <code>marchmaker-api.onrender.com</code> (Render adds letters when a name is taken), you will use the real one in section 15.</li>
+      </ol>
+      <div class="note bad"><span class="t">If the log says “Refusing to start in production: …”</span><p>That line lists exactly which settings are wrong, for example a missing Redis address or Sentry address. Fix them in the environment group, then use <em>Manual Deploy</em> and <em>Clear build cache &amp; deploy</em> if needed. Other likely problems are in section 22.</p></div>
+    </section>
+
+    <!-- ============================================================ 13 -->
+    <section id="render-worker">
+      <h2 class="sec">13. Render: the worker <span class="tag">Render</span></h2>
+      <p class="sec-sub">The worker processes photos, sends emails, runs matching and draws invoices. Without it, photos stay on “Processing…”.</p>
+      <ol class="steps">
+        <li>Press <strong>New +</strong>, then <strong>Background Worker</strong>.</li>
+        <li>Select the same repo <code>marchmaker_backend</code>, branch <code>main</code>.</li>
+        <li>Fill in:
+          <div class="tw"><table>
+            <thead><tr><th>Field</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Name</td><td><code>marchmaker-worker</code></td></tr>
+              <tr><td>Region</td><td>Same as the API and Redis</td></tr>
+              <tr><td>Runtime</td><td><strong>Docker</strong></td></tr>
+              <tr><td>Instance type</td><td><strong>Starter</strong> or larger (no free plan exists for workers)</td></tr>
+              <tr><td>Dockerfile Path</td><td><code>./apps/worker/Dockerfile</code></td></tr>
+              <tr><td>Docker Build Context Directory</td><td><code>.</code></td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li>Link the same environment group <code>marchmaker-shared</code>.</li>
+        <li>Press <strong>Create Background Worker</strong>.
+          <span class="expect"><b>Result:</b> the log shows the worker connected to MongoDB and started its job loop, with no “Refusing to start” line. Also check <strong>Redis</strong> shows as connected, not an error repeating.</span>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ 14 -->
+    <section id="db-init">
+      <h2 class="sec">14. Prepare the database and create the first admin <span class="tag">Render</span></h2>
+      <p class="sec-sub">Run these three commands once from your own computer. They fill the empty production database with the legal texts, plans, question banks and your first super admin.</p>
+      <div class="note warn"><span class="t">Use the same keys as Render</span><p>The commands below encrypt the admin's birth date. The <code>FIELD_ENCRYPTION_KEY</code> and <code>FIELD_BLIND_INDEX_KEY</code> you type here must be <strong>exactly</strong> the ones in the Render environment group. A different key makes that data unreadable by the live app.</p></div>
+      <ol class="steps">
+        <li>Open a terminal in <code>marchmaker_backend</code> and make sure the packages are installed (<code>pnpm install</code>).</li>
+        <li>Set the values for this terminal only. Pick the admin email you will really use, and a long unique password of at least 12 characters.
+          <div class="code"><span class="lbl">Windows PowerShell</span><pre>$env:MONGODB_URI='PASTE-THE-SAME-CONNECTION-STRING'
+$env:FIELD_ENCRYPTION_KEY='PASTE-THE-SAME-KEY'
+$env:FIELD_BLIND_INDEX_KEY='PASTE-THE-SAME-KEY'
+$env:SEED_ADMIN_EMAIL='you@yourdomain.com'
+$env:SEED_ADMIN_PASSWORD='a-long-unique-password'</pre><button class="copy">Copy</button></div>
+          <div class="code"><span class="lbl">macOS / Linux / Git Bash</span><pre>export MONGODB_URI='PASTE-THE-SAME-CONNECTION-STRING'
+export FIELD_ENCRYPTION_KEY='PASTE-THE-SAME-KEY'
+export FIELD_BLIND_INDEX_KEY='PASTE-THE-SAME-KEY'
+export SEED_ADMIN_EMAIL='you@yourdomain.com'
+export SEED_ADMIN_PASSWORD='a-long-unique-password'</pre><button class="copy">Copy</button></div>
+        </li>
+        <li>Run the three commands in order:
+          <div class="code"><span class="lbl">Terminal</span><pre>pnpm --filter @marchmaker/api migrate:up
+pnpm --filter @marchmaker/api sync-indexes
+pnpm --filter @marchmaker/api seed</pre><button class="copy">Copy</button></div>
+          <span class="expect"><b>Result:</b> <code>migrate:up</code> lists migrations applied (it may say there is nothing to migrate on a new database). <code>sync-indexes</code> prints “indexes ensured”. <code>seed</code> prints “super admin ensured; two-factor setup is required at first sign-in”.</span>
+        </li>
+        <li><strong>Clear the secrets from the terminal</strong> by closing it. In PowerShell you can also run <code>Remove-Item Env:MONGODB_URI, Env:FIELD_ENCRYPTION_KEY, Env:FIELD_BLIND_INDEX_KEY, Env:SEED_ADMIN_PASSWORD</code>.</li>
+      </ol>
+      <div class="note info"><span class="t">Do not run the demo seed here</span><p><code>seed:demo</code> refuses to run in production, and fake members have no place in a live database.</p></div>
+    </section>
+
+    <!-- ============================================================ 15 -->
+    <section id="vercel-config">
+      <h2 class="sec">15. Point the sites at your API <span class="tag">Vercel</span></h2>
+      <p class="sec-sub">One edit in the frontend repo, so the sites forward <code>/api</code> calls to your Render address.</p>
+      <ol class="steps">
+        <li>Open <code>marchmaker_frontend/apps/web/vercel.json</code> and find the line with <code>https://marchmaker-api.onrender.com</code>.</li>
+        <li>If your real Render address is different, replace it. Keep the <code>/api/:path*</code> part. Do the same in <code>marchmaker_frontend/apps/admin/vercel.json</code>.
+          <div class="code"><span class="lbl">The line to check, in both files</span><pre>{ "source": "/api/:path*", "destination": "https://marchmaker-api.onrender.com/api/:path*" }</pre><button class="copy">Copy</button></div>
+        </li>
+        <li>If you changed anything, save, commit and push:
+          <div class="code"><span class="lbl">Terminal</span><pre>cd marchmaker_frontend
+git add apps/web/vercel.json apps/admin/vercel.json
+git commit -m "Point Vercel at the Render API"
+git push origin main</pre><button class="copy">Copy</button></div>
+        </li>
+      </ol>
+      <p>The same file already sets the single-page-app fallback, long caching for built files, a no-index rule for the admin site, and security headers.</p>
+    </section>
+
+    <!-- ============================================================ 16 -->
+    <section id="vercel-web">
+      <h2 class="sec">16. Vercel: the member site <span class="tag">Vercel</span></h2>
+      <ol class="steps">
+        <li>Sign in at <a href="https://vercel.com" target="_blank" rel="noopener">vercel.com</a> with GitHub. Press <strong>Add New</strong>, then <strong>Project</strong>.</li>
+        <li>Import <code>marchmaker_frontend</code>. Give Vercel access to the repo if asked.</li>
+        <li>On the configure screen set:
+          <div class="tw"><table>
+            <thead><tr><th>Field</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Project Name</td><td><code>marchmaker-web</code> (this decides <code>marchmaker-web.vercel.app</code>)</td></tr>
+              <tr><td>Framework Preset</td><td>Vite</td></tr>
+              <tr><td>Root Directory</td><td><code>apps/web</code> (press <em>Edit</em> and choose the folder)</td></tr>
+              <tr><td>Build and install commands</td><td>Leave as they are. <code>vercel.json</code> provides them.</td></tr>
+              <tr><td>Include source files outside of the Root Directory</td><td>On (the default). The site needs the folders <code>packages/ui</code> and <code>packages/shared</code>.</td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li>Open <strong>Environment Variables</strong> and add these for <em>Production</em>:
+          <div class="tw"><table>
+            <thead><tr><th>Name</th><th>Value</th><th>Needed?</th></tr></thead>
+            <tbody>
+              <tr><td><code>VITE_SITE_URL</code></td><td><code>https://marchmaker-web.vercel.app</code></td><td>Yes (links, sitemap, previews)</td></tr>
+              <tr><td><code>VITE_RAZORPAY_KEY_ID</code></td><td>Your Razorpay Key Id (the public one)</td><td>Yes, for payments</td></tr>
+              <tr><td><code>VITE_SENTRY_DSN</code></td><td>Frontend Sentry address</td><td>Optional</td></tr>
+              <tr><td><code>PRERENDER_API_URL</code></td><td><code>https://marchmaker-api.onrender.com/api/v1</code></td><td>Optional. Lets the build bake current prices and legal text into the public pages. If left out the pages use standard prices and load legal text when opened.</td></tr>
+              <tr><td><code>VITE_POSTHOG_KEY</code></td><td>Your PostHog key</td><td>Optional</td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li>Press <strong>Deploy</strong>.
+          <span class="expect"><b>Result:</b> after a few minutes the build finishes and Vercel shows the site. The build log says “prerendered 16 pages”.</span>
+        </li>
+        <li>Open <strong>Settings</strong>, then <strong>General</strong>, and set the <strong>Node.js Version</strong> to <code>22.x</code> or <code>24.x</code> if it is older. Redeploy if you changed it.</li>
+      </ol>
+      <div class="note info"><span class="t">Check the forwarding works</span><p>Open <code>https://marchmaker-web.vercel.app/api/v1/meta</code>. You should see a short block of JSON. That proves Vercel is forwarding to Render. If you see an error page instead, see section 22.</p></div>
+    </section>
+
+    <!-- ============================================================ 17 -->
+    <section id="vercel-admin">
+      <h2 class="sec">17. Vercel: the admin console <span class="tag">Vercel</span></h2>
+      <p class="sec-sub">A second project from the same repo.</p>
+      <ol class="steps">
+        <li>Press <strong>Add New</strong>, then <strong>Project</strong>, and import <code>marchmaker_frontend</code> again.</li>
+        <li>Set:
+          <div class="tw"><table>
+            <thead><tr><th>Field</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Project Name</td><td><code>marchmaker-admin</code></td></tr>
+              <tr><td>Framework Preset</td><td>Vite</td></tr>
+              <tr><td>Root Directory</td><td><code>apps/admin</code></td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li>Environment variables: none are required. Add <code>VITE_SENTRY_DSN</code> if you want error reports.</li>
+        <li>Press <strong>Deploy</strong>. Set the Node.js version as in section 16.
+          <span class="expect"><b>Result:</b> the admin sign-in page opens at <code>https://marchmaker-admin.vercel.app</code>.</span>
+        </li>
+      </ol>
+      <div class="note warn"><span class="t">Protect the admin console</span><p>Anyone can open the sign-in page. The password and the authenticator code protect the account, but you can add more. On a paid Vercel plan use <em>Deployment Protection</em>. You can also keep the address private and only share it with staff. A custom domain with an access gateway in front is better still (see <code>docs/SECURITY.md</code>).</p></div>
+    </section>
+
+    <!-- ============================================================ 18 -->
+    <section id="wire">
+      <h2 class="sec">18. Connect everything <span class="tag">Wire up</span></h2>
+      <p class="sec-sub">Now that every address exists, finish the pieces that needed them.</p>
+
+      <h3>18.1 Confirm the three addresses</h3>
+      <ol class="steps">
+        <li>Compare the real Vercel addresses with <code>APP_URL</code>, <code>ADMIN_URL</code> and <code>CORS_ORIGINS</code> in the Render environment group. If any differ, edit them, then press <strong>Save</strong>. Render redeploys the API and worker when the group changes. If it does not, use <em>Manual Deploy</em> on both.</li>
+        <li>Check the R2 CORS rules (section 5) and the Google origins (section 9) list the same real addresses.</li>
+      </ol>
+
+      <h3>18.2 Razorpay webhook</h3>
+      <ol class="steps">
+        <li>In Razorpay open <em>Account &amp; Settings</em>, then <em>Webhooks</em>, and add a webhook.</li>
+        <li>URL: <code>https://marchmaker-api.onrender.com/api/v1/webhooks/razorpay</code>. This goes straight to Render, not through Vercel. Use your real Render address.</li>
+        <li>Secret: the <code>RAZORPAY_WEBHOOK_SECRET</code> from section 3, exactly.</li>
+        <li>Tick the events: all <code>payment.*</code>, <code>order.paid</code>, all <code>subscription.*</code> and all <code>refund.*</code>. Save.</li>
+      </ol>
+
+      <h3>18.3 Resend webhook</h3>
+      <ol class="steps">
+        <li>In Resend open <em>Webhooks</em> and add an endpoint: <code>https://marchmaker-api.onrender.com/api/v1/webhooks/resend</code>. Tick the delivery events (delivered, bounced, complained).</li>
+        <li>Resend shows a <strong>signing secret</strong>. Copy it, replace the temporary <code>RESEND_WEBHOOK_SECRET</code> in the Render group with it, and save. The webhook lets the app stop emailing addresses that bounce or complain.</li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ 19 -->
+    <section id="verify">
+      <h2 class="sec">19. Test the live system <span class="tag">Verify</span></h2>
+      <p class="sec-sub">Do these in order, in a private browser window. A green result for each means that part works end to end.</p>
+
+      <h3>19.1 First admin sign-in with two-factor</h3>
+      <ol class="steps">
+        <li>Install an authenticator app on your phone (Google Authenticator, Microsoft Authenticator or Authy).</li>
+        <li>Open the admin console address and sign in with the admin email and password from section 14.
+          <span class="expect"><b>Result:</b> a setup page with a QR code.</span>
+        </li>
+        <li>Scan the QR code in the app, then type the 6-digit code it shows.
+          <span class="expect"><b>Result:</b> a list of <strong>recovery codes</strong>. Save them in your password manager. Each works once if you lose your phone.</span>
+        </li>
+        <li>Tick “I have saved these codes” and continue. The console opens.</li>
+      </ol>
+
+      <h3>19.2 Smoke test checklist</h3>
+      <ul class="check" id="chk-smoke">
+        <li><label><input type="checkbox"><span><code>…onrender.com/healthz</code> answers “ok”.</span></label></li>
+        <li><label><input type="checkbox"><span><code>…vercel.app/api/v1/meta</code> returns JSON (the forwarding works).</span></label></li>
+        <li><label><input type="checkbox"><span>The member site opens, with the home, pricing and FAQ pages. Prices show.</span></label></li>
+        <li><label><input type="checkbox"><span>Registering a new member sends a <strong>real email</strong> to your inbox, and the link confirms it.</span></label></li>
+        <li><label><input type="checkbox"><span>Signing in works and the dashboard says Hello with the right name. Refreshing keeps you signed in.</span></label></li>
+        <li><label><input type="checkbox"><span>The admin console signs in with the authenticator code, and a member session on the other site stays signed in at the same time.</span></label></li>
+        <li><label><input type="checkbox"><span>A photo upload goes from “Processing…” to “Awaiting review”. This proves the browser can upload to R2 and the worker is running.</span></label></li>
+        <li><label><input type="checkbox"><span>An ID upload (front, back, selfie) shows green “done” marks, and the admin can open the images.</span></label></li>
+        <li><label><input type="checkbox"><span>A test payment in Razorpay test mode completes, credits arrive, and the invoice opens as a PDF with your company details and the rupee sign.</span></label></li>
+        <li><label><input type="checkbox"><span>Requesting a data export in Settings sends an email with a link, and the link downloads a zip.</span></label></li>
+        <li><label><input type="checkbox"><span>An SMS code reaches a real phone (phone sign-in or number verification).</span></label></li>
+        <li><label><input type="checkbox"><span>Sentry shows the project as receiving events, or a deliberate test error appears there.</span></label></li>
+        <li><label><input type="checkbox"><span>Google sign-in works (only if you set it up).</span></label></li>
+        <li><label><input type="checkbox"><span>The admin Jobs and providers page shows no failing queues or open circuit breakers.</span></label></li>
+      </ul>
+      <p>Then follow the Testing Guide's journey (profile, verification, matching, introduction, chat) with two real test members. Finish with <code>docs/LAUNCH_CHECKLIST.md</code> before inviting the public.</p>
+    </section>
+
+    <!-- ============================================================ 20 -->
+    <section id="domains">
+      <h2 class="sec">20. Your own domain <span class="tag">Optional</span></h2>
+      <p class="sec-sub">Move from <code>.vercel.app</code> addresses to names like <code>www.yourdomain.com</code> and <code>admin.yourdomain.com</code>.</p>
+      <ol class="steps">
+        <li>In Vercel open the <code>marchmaker-web</code> project, then <em>Settings</em>, then <em>Domains</em>. Add <code>www.yourdomain.com</code>. Vercel shows the DNS record to add at your domain company (usually a CNAME). Add it and wait for the tick. Do the same for <code>admin.yourdomain.com</code> on <code>marchmaker-admin</code>.</li>
+        <li>Optionally add the bare <code>yourdomain.com</code> and set it to redirect to <code>www</code>.</li>
+        <li>Update every place that holds an address, then redeploy:
+          <div class="tw"><table>
+            <thead><tr><th>Where</th><th>Change</th></tr></thead>
+            <tbody>
+              <tr><td>Render group <code>marchmaker-shared</code></td><td><code>APP_URL</code>, <code>ADMIN_URL</code>, <code>CORS_ORIGINS</code> to the new https addresses</td></tr>
+              <tr><td>Vercel web project</td><td><code>VITE_SITE_URL</code> to the new address, then redeploy</td></tr>
+              <tr><td>R2 buckets (three)</td><td>Add the new addresses to <code>AllowedOrigins</code></td></tr>
+              <tr><td>Google Cloud client</td><td>Add the new origins</td></tr>
+              <tr><td>Resend</td><td>Nothing, unless your sending domain changes</td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li>Members who were signed in at the old address will need to sign in again at the new one.</li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ 21 -->
+    <section id="operate">
+      <h2 class="sec">21. Day to day <span class="tag">Operate</span></h2>
+      <h3>Releasing a change</h3>
+      <ul>
+        <li><strong>Backend change:</strong> push to <code>main</code>. Render rebuilds and swaps the API and the worker automatically. If the change adds a database migration, run <code>migrate:up</code> and <code>sync-indexes</code> from your computer (section 14, first two commands) <em>before</em> pushing.</li>
+        <li><strong>Frontend change:</strong> push to <code>main</code>. Vercel rebuilds both projects. If the backend's shared package changed, run <code>pnpm sync:shared</code> in the frontend first and commit it.</li>
+        <li><strong>Settings change:</strong> edit the Render environment group. Render redeploys both services.</li>
+      </ul>
+      <h3>Rolling back</h3>
+      <ul>
+        <li><strong>Render:</strong> open the service, then <em>Events</em>, and pick an earlier successful deploy to roll back to.</li>
+        <li><strong>Vercel:</strong> open the project, then <em>Deployments</em>, choose an earlier one and press <em>Promote to Production</em>.</li>
+        <li>A database migration is not undone by a code rollback. Read the migration before relying on it.</li>
+      </ul>
+      <h3>Where to look when something is wrong</h3>
+      <ul>
+        <li>Render service, <em>Logs</em> (live) and <em>Metrics</em>.</li>
+        <li>Vercel project, <em>Deployments</em>, then <em>Logs</em> and the build output.</li>
+        <li>Sentry for errors, Atlas <em>Metrics</em> for the database, Resend <em>Logs</em> for email, Razorpay <em>Webhooks</em> for payment notices.</li>
+        <li>The admin console's <strong>Jobs and providers</strong>, <strong>Payment webhooks</strong> and <strong>Audit log</strong> pages.</li>
+        <li><code>docs/RUNBOOK.md</code> in the backend repo for incidents, alerts and the backup restore drill.</li>
+      </ul>
+      <h3>Good habits</h3>
+      <ul>
+        <li>Keep the API on a paid plan so it never sleeps. On a free plan the first visit after a quiet period takes about a minute.</li>
+        <li>Turn on Atlas backups and do one restore drill before launch.</li>
+        <li>Store all keys in a password manager. The two that cannot be recovered are <code>FIELD_ENCRYPTION_KEY</code> and <code>FIELD_BLIND_INDEX_KEY</code>.</li>
+        <li>Rotate the Razorpay, Resend and R2 keys if anyone who knew them leaves.</li>
+      </ul>
+      <h3>Rough monthly cost to plan for</h3>
+      <p>These are indicative only, so check each provider's current price list.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Item</th><th>Trial</th><th>Real use</th></tr></thead>
+        <tbody>
+          <tr><td>Render API and worker</td><td>Starter instances, about a few US dollars each per month</td><td>Starter or larger</td></tr>
+          <tr><td>Render Key Value</td><td>Free</td><td>Starter or larger</td></tr>
+          <tr><td>MongoDB Atlas</td><td>Free (M0)</td><td>M10 or larger</td></tr>
+          <tr><td>Vercel</td><td>Free (non-commercial)</td><td>Pro, per team member</td></tr>
+          <tr><td>R2, Resend, Sentry</td><td>Free tiers</td><td>Usage based</td></tr>
+          <tr><td>SMS, payments</td><td>Per message and per transaction</td><td>Per message and per transaction</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============================================================ 22 -->
+    <section id="trouble">
+      <h2 class="sec">22. If something goes wrong <span class="tag">Help</span></h2>
+      <div class="tw"><table>
+        <thead><tr><th>What you see</th><th>Why, and what to do</th></tr></thead>
+        <tbody>
+          <tr><td>Render build fails at <code>pnpm install --frozen-lockfile</code></td><td>The lockfile does not match a <code>package.json</code>. Run <code>pnpm install</code> in the backend repo, commit the changed <code>pnpm-lock.yaml</code> and push.</td></tr>
+          <tr><td>Render build fails with an out-of-memory error</td><td>Use a larger build instance or retry. The workspace install is large.</td></tr>
+          <tr><td>API log: “Refusing to start in production: …”</td><td>Read the list after the colon. Each item names the setting to fix in the environment group.</td></tr>
+          <tr><td>API log: “Invalid environment: …”</td><td>A value has the wrong shape, for example <code>FIELD_ENCRYPTION_KEY</code> is not base64, or a setting is empty. Delete empty settings.</td></tr>
+          <tr><td>API or worker cannot connect to MongoDB</td><td>Check Network Access in Atlas, the user and password, and that special characters in the password are percent-encoded.</td></tr>
+          <tr><td>API log: cannot connect to Redis</td><td>Use the <em>Internal</em> URL, and keep Redis and both services in the same region.</td></tr>
+          <tr><td>The member site shows a Vercel error or 502 on <code>/api/…</code></td><td>The API is asleep (free plan), crashed, or the address in <code>vercel.json</code> is wrong. Open the API's <code>/healthz</code> directly. Fix the address, push, and Vercel redeploys.</td></tr>
+          <tr><td>Page loads but you cannot sign in or register</td><td>Check <code>COOKIE_SECURE=true</code>, and that <code>CORS_ORIGINS</code>, <code>APP_URL</code> and <code>ADMIN_URL</code> match your site addresses exactly (https, no trailing slash). A 403 saying the origin is not allowed means a mismatch.</td></tr>
+          <tr><td>Everyone gets “too many attempts” or rate limits</td><td>The API sees one address for all visitors. Set <code>TRUST_PROXY_HOPS=2</code> and redeploy.</td></tr>
+          <tr><td>Photo upload fails in the browser</td><td>The bucket CORS rule is missing or does not list your site address (section 5).</td></tr>
+          <tr><td>Photo stays on “Processing…”</td><td>The worker is not running, cannot reach Redis, or uses different storage settings. Check its logs and that it links the same environment group.</td></tr>
+          <tr><td>Emails never arrive</td><td>The sending domain is not verified in Resend, <code>EMAIL_FROM</code> uses a different domain, or the message went to spam. Look at Resend's <em>Logs</em>.</td></tr>
+          <tr><td>SMS codes never arrive</td><td>The DLT template is not approved or the template ID is wrong. Check MSG91's delivery report.</td></tr>
+          <tr><td>Payment completes but credits do not appear</td><td>The Razorpay webhook is wrong. Compare the address and the secret, and look at the admin <em>Payment webhooks</em> page.</td></tr>
+          <tr><td>Vercel build: “cannot find @marchmaker/shared”</td><td>The shared copy is missing. Make sure <code>packages/shared</code> is committed, and that <em>Include source files outside of the Root Directory</em> is on.</td></tr>
+          <tr><td>Vercel build fails with a type error about a shared type</td><td>The frontend copy is out of date. Run <code>pnpm sync:shared</code> in the frontend, commit and push.</td></tr>
+          <tr><td>Admin says two-factor setup is required but the page is stuck</td><td>Sign out and sign in again. An old session from before enrolment has no code check.</td></tr>
+          <tr><td>Data export downloads fail</td><td>The documents bucket key lacks write access, or the worker cannot reach storage. Check the worker log.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============================================================ 23 -->
+    <section id="final">
+      <h2 class="sec">23. Final checklist <span class="tag">Sign-off</span></h2>
+      <p class="sec-sub">Tick each line when it is done. Your ticks are saved in this browser.</p>
+      <div class="progress" id="final-progress"></div>
+      <ul class="check" id="chk-final">
+        <li><label><input type="checkbox"><span>Both repos merged to <code>main</code> and pushed.</span></label></li>
+        <li><label><input type="checkbox"><span>Secrets generated and saved in a password manager.</span></label></li>
+        <li><label><input type="checkbox"><span>Atlas cluster, user, network access and connection string ready.</span></label></li>
+        <li><label><input type="checkbox"><span>Three R2 buckets, two key pairs and the CORS rule in place.</span></label></li>
+        <li><label><input type="checkbox"><span>Resend domain verified and API key created.</span></label></li>
+        <li><label><input type="checkbox"><span>MSG91 key and approved OTP template ID in hand.</span></label></li>
+        <li><label><input type="checkbox"><span>Razorpay test keys in hand.</span></label></li>
+        <li><label><input type="checkbox"><span>Sentry project and DSN created.</span></label></li>
+        <li><label><input type="checkbox"><span>Render Key Value created with policy <code>noeviction</code>.</span></label></li>
+        <li><label><input type="checkbox"><span>Environment group <code>marchmaker-shared</code> filled in and linked to both services.</span></label></li>
+        <li><label><input type="checkbox"><span>API service Live and <code>/healthz</code> answers.</span></label></li>
+        <li><label><input type="checkbox"><span>Worker service running with no errors.</span></label></li>
+        <li><label><input type="checkbox"><span>Migrations, indexes and seed run; first admin created.</span></label></li>
+        <li><label><input type="checkbox"><span><code>vercel.json</code> in both apps points at the real API address.</span></label></li>
+        <li><label><input type="checkbox"><span>Vercel member site and admin console deployed.</span></label></li>
+        <li><label><input type="checkbox"><span>Razorpay and Resend webhooks added with the right secrets.</span></label></li>
+        <li><label><input type="checkbox"><span>Admin signed in with two-factor and recovery codes saved.</span></label></li>
+        <li><label><input type="checkbox"><span>Smoke test checklist (section 19) fully ticked.</span></label></li>
+        <li><label><input type="checkbox"><span><code>docs/LAUNCH_CHECKLIST.md</code> worked through before opening to the public.</span></label></li>
+      </ul>
+      <footer class="end">Keep this page private. It names your services and settings, though it holds none of your actual keys.</footer>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  // ----- contents built from the section headings, so it never drifts from the page
+  var secs = Array.prototype.slice.call(document.querySelectorAll('main > section'));
+  var toc = document.getElementById('toc-list');
+  var menu = document.getElementById('menu-list');
+  var lastGroup = '';
+  secs.forEach(function (s) {
+    var h = s.querySelector('h2.sec'); if (!h) return;
+    var tag = h.querySelector('.tag');
+    var group = tag ? tag.textContent : '';
+    var title = h.childNodes[0].textContent.trim();
+    if (group !== lastGroup) {
+      var g = document.createElement('li'); g.className = 'grp'; g.textContent = group; toc.appendChild(g); lastGroup = group;
+    }
+    var li = document.createElement('li'); var a = document.createElement('a');
+    a.href = '#' + s.id; a.textContent = title; li.appendChild(a); toc.appendChild(li);
+    var li2 = document.createElement('li'); var a2 = document.createElement('a');
+    a2.href = '#' + s.id; a2.textContent = title; li2.appendChild(a2); menu.appendChild(li2);
+    a2.addEventListener('click', function () { var d = document.querySelector('details.menu'); if (d) d.open = false; });
+  });
+  var links = Array.prototype.slice.call(toc.querySelectorAll('a'));
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (l) { l.classList.toggle('on', l.getAttribute('href') === '#' + e.target.id); });
+        }
+      });
+    }, { rootMargin: '-10% 0px -80% 0px' });
+    secs.forEach(function (s) { io.observe(s); });
+  }
+
+  // ----- copy buttons
+  function copyText(text, btn) {
+    var done = function () { var old = btn.textContent; btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = old; }, 1400); };
+    var fallback = function () {
+      try {
+        var r = document.createRange(); var node = btn.closest('.code') ? btn.closest('.code').querySelector('pre') : null;
+        if (node) { r.selectNodeContents(node); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+      } catch (e) {}
+    };
+    try {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } catch (e) { fallback(); }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('button.copy'), function (b) {
+    b.type = 'button';
+    b.addEventListener('click', function () {
+      var text = b.getAttribute('data-copy');
+      if (!text) { var pre = b.parentNode.querySelector('pre'); text = pre ? pre.innerText : ''; }
+      copyText(text, b);
+    });
+  });
+
+  // ----- tick boxes remembered in this browser (fine if storage is unavailable)
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.check input[type=checkbox]'));
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem('mm-deploy-ticks') || '{}'); } catch (e) { store = {}; }
+  function save() { try { localStorage.setItem('mm-deploy-ticks', JSON.stringify(store)); } catch (e) {} }
+  function progress() {
+    var el = document.getElementById('final-progress'); if (!el) return;
+    var all = Array.prototype.slice.call(document.querySelectorAll('#chk-final input'));
+    var n = all.filter(function (x) { return x.checked; }).length;
+    el.textContent = n + ' of ' + all.length + ' done';
+  }
+  boxes.forEach(function (b, i) {
+    b.id = b.id || 'tick-' + i;
+    if (store[b.id]) b.checked = true;
+    b.addEventListener('change', function () { store[b.id] = b.checked; save(); progress(); });
+  });
+  progress();
+})();
+</script>
+
+</body>
+</html>
