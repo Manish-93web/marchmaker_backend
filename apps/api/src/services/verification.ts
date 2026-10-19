@@ -63,9 +63,14 @@ export async function getStatus(ctx: AppContext, userId: string) {
   if (!user) throw notFound();
   const evidenceDays = retention.evidenceDays;
   const state = c?.status ?? 'none';
-  const uploaded = Object.fromEntries(
-    EVIDENCE_KINDS.map((k) => [k, !!(c?.evidence?.[k] as { uploadedAt?: Date } | undefined)?.uploadedAt]),
-  );
+  // While the member is still collecting documents, an item counts as received as soon as the file really is in
+  // storage with the size it declared, so the page can tick it and enable Submit. Submitting re-checks the same thing.
+  const collecting = !!c && ['draft', 'reupload_requested'].includes(c.status);
+  const uploaded: Record<string, boolean> = {};
+  for (const k of EVIDENCE_KINDS) {
+    const ev = c?.evidence?.[k] as { key?: string; uploadedAt?: Date } | undefined;
+    uploaded[k] = !!ev?.uploadedAt || (collecting && !!ev?.key && (await confirmEvidence(ctx, c as CaseDoc, k)));
+  }
   return {
     state,
     method: c?.method ?? null,

@@ -162,6 +162,18 @@ describe('member evidence upload and submission', () => {
     await m.post('/verification/upload-url').send({ kind: 'passport_scan', contentType: 'image/png', sizeBytes: 5000 }).expect(422);
   });
 
+  it('shows each document as received as soon as it is uploaded, before submitting', async () => {
+    const t = setup();
+    const m = await member(t);
+    expect((await m.get('/verification/status')).body.uploaded).toEqual({ id_front: false, id_back: false, selfie: false });
+    const up = await m.post('/verification/upload-url').send({ kind: 'id_front', contentType: 'image/jpeg', sizeBytes: IMG.length }).expect(201);
+    // Declared but not yet in storage: still not received.
+    expect((await m.get('/verification/status')).body.uploaded.id_front).toBe(false);
+    const v = await Verification.findById(up.body.caseId);
+    await t.storage.put('identity', (v!.evidence as unknown as Record<string, { key: string }>).id_front!.key, IMG, 'image/jpeg');
+    expect((await m.get('/verification/status')).body.uploaded).toEqual({ id_front: true, id_back: false, selfie: false });
+  });
+
   it('names what is missing, then submits and moves the journey forward', async () => {
     const t = setup();
     const m = await member(t);
