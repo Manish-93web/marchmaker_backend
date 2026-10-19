@@ -30,7 +30,7 @@ export function createApp({ env, log, isReady, ctx: given }: AppDeps): Express {
   const ctx = given ?? buildContext({ env, log, mailer: new MemoryMailer(log), sms: new MemorySms(log) });
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', 1);
+  app.set('trust proxy', env.TRUST_PROXY_HOPS);
 
   app.use(requestId);
   app.use(

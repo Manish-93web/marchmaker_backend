@@ -20,6 +20,9 @@ const envSchema = z.object({
   /** Staff must pass an authenticator code. Setting this to false is for local development only; production refuses it. */
   STAFF_MFA_REQUIRED: z.string().optional().transform((v) => v !== 'false' && v !== '0'),
 
+  /** How many proxies sit in front of the API and add to X-Forwarded-For. 1 when users reach Render directly; 2 when the site's Vercel rewrite forwards to Render. */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
+
   CORS_ORIGINS: z
     .string()
     .default('http://localhost:5173,http://localhost:5174')
