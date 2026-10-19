@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0}</style>
+<title>Marchmaker Testing Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a sticky contents column beside a single reading column; the contents fold into a menu on phones. */
+:root {
+  --bg: #F6F6FA;
+  --surface: #FFFFFF;
+  --ink: #1B1A24;
+  --muted: #5E5B6E;
+  --line: #E1E0EA;
+  --accent: #5B2A86;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #EFE8F7;
+  --code-bg: #EFEEF5;
+  --ok: #17724B;
+  --ok-bg: #E5F5EC;
+  --warn: #8F4A00;
+  --warn-bg: #FFF1DC;
+  --bad: #B42318;
+  --bad-bg: #FDECEA;
+  --info: #1D4F91;
+  --info-bg: #E6EFFB;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14131B; --surface: #1C1B26; --ink: #ECEBF3; --muted: #A9A6BC; --line: #2E2C3C;
+    --accent: #C9A6F2; --accent-ink: #1A1024; --accent-soft: #2A2240; --code-bg: #232230;
+    --ok: #6FD3A2; --ok-bg: #10291E; --warn: #F0B866; --warn-bg: #33270F;
+    --bad: #FF9A8F; --bad-bg: #351615; --info: #8DB7F2; --info-bg: #14233A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14131B; --surface: #1C1B26; --ink: #ECEBF3; --muted: #A9A6BC; --line: #2E2C3C;
+  --accent: #C9A6F2; --accent-ink: #1A1024; --accent-soft: #2A2240; --code-bg: #232230;
+  --ok: #6FD3A2; --ok-bg: #10291E; --warn: #F0B866; --warn-bg: #33270F;
+  --bad: #FF9A8F; --bad-bg: #351615; --info: #8DB7F2; --info-bg: #14233A;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1.25rem; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.65; padding-inline: 16px; padding-block: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+.shell { max-width: 1120px; margin-inline: auto; display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 48px; padding-block: 32px 80px; }
+.toc { position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; font-size: 14px; padding-right: 8px; }
+.toc h2 { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.toc a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; border-left: 2px solid transparent; }
+.toc a:hover { background: var(--accent-soft); color: var(--ink); }
+.toc a.on { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); font-weight: 500; }
+.toc .grp { margin: 14px 0 4px 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.menu { display: none; }
+
+main { min-width: 0; max-width: 780px; }
+header.top { padding-bottom: 24px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.kicker { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin: 0 0 8px; }
+h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); line-height: 1.15; margin: 0 0 12px; font-weight: 600; text-wrap: balance; }
+.lede { font-size: 1.08rem; color: var(--muted); margin: 0; max-width: 62ch; }
+section { padding-top: 40px; }
+h2.sec { font-size: 1.55rem; line-height: 1.25; margin: 0 0 6px; font-weight: 600; text-wrap: balance; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+h2.sec .tag { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; background: var(--accent-soft); color: var(--accent); padding: 3px 9px; border-radius: 999px; font-weight: 600; }
+.sec-sub { color: var(--muted); margin: 0 0 20px; max-width: 64ch; }
+h3 { font-size: 1.08rem; margin: 28px 0 8px; font-weight: 600; }
+p { margin: 0 0 12px; max-width: 70ch; }
+ul, ol { padding-left: 1.25rem; margin: 0 0 14px; }
+li { margin-bottom: 6px; max-width: 72ch; }
+li > ul, li > ol { margin-top: 6px; margin-bottom: 4px; }
+strong { font-weight: 600; }
+code { font-family: var(--font-mono); font-size: .88em; background: var(--code-bg); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+kbd { font-family: var(--font-mono); font-size: .82em; background: var(--surface); border: 1px solid var(--line); border-bottom-width: 2px; padding: 0 6px; border-radius: 5px; }
+
+/* sequential steps */
+ol.steps { list-style: none; padding: 0; margin: 14px 0 18px; counter-reset: s; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+ol.steps > li { counter-increment: s; position: relative; padding: 14px 16px 14px 56px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin: 0; max-width: none; min-width: 0; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 14px; top: 13px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 600; font-size: 14px; }
+ol.steps > li > :last-child { margin-bottom: 0; }
+.expect { display: block; margin-top: 8px; padding: 8px 12px; background: var(--ok-bg); color: var(--ok); border-radius: 8px; font-size: .93rem; }
+.expect b { font-weight: 600; }
+
+/* callouts */
+.note { border-radius: 10px; padding: 12px 16px; margin: 16px 0; border: 1px solid transparent; max-width: 74ch; }
+.note > :last-child { margin-bottom: 0; }
+.note .t { font-weight: 600; display: block; margin-bottom: 2px; font-size: .86rem; letter-spacing: .06em; text-transform: uppercase; }
+.note.info { background: var(--info-bg); color: var(--ink); border-color: color-mix(in srgb, var(--info) 35%, transparent); }
+.note.info .t { color: var(--info); }
+.note.warn { background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.note.warn .t { color: var(--warn); }
+.note.bad { background: var(--bad-bg); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+.note.bad .t { color: var(--bad); }
+
+/* code with copy */
+.code { position: relative; margin: 10px 0 16px; }
+.code pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; padding-right: 76px; overflow-x: auto; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; }
+.code .lbl { position: absolute; left: 12px; top: -10px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-size: 11px; padding: 0 8px; border-radius: 999px; font-family: var(--font-body); letter-spacing: .06em; text-transform: uppercase; }
+button.copy { position: absolute; right: 8px; top: 8px; font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+button.copy:hover { border-color: var(--accent); color: var(--accent); }
+
+/* access cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 14px 0 20px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.card h4 { margin: 0 0 8px; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.kv { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px dashed var(--line); min-width: 0; }
+.kv:first-of-type { border-top: 0; }
+.kv span.k { color: var(--muted); font-size: .86rem; flex: none; }
+.kv span.v { font-family: var(--font-mono); font-size: .88rem; overflow-wrap: anywhere; text-align: right; min-width: 0; }
+.kv button.copy { position: static; flex: none; padding: 2px 8px; }
+.card.admin { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* tables */
+.tw { overflow-x: auto; margin: 12px 0 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; min-width: 520px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--bg); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+
+/* flow */
+.flow { list-style: none; padding: 0; margin: 14px 0 20px; display: flex; flex-wrap: wrap; gap: 8px 6px; align-items: center; }
+.flow li { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 13px; font-size: .88rem; max-width: none; }
+.flow li.admin { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+.flow li.sep { background: none; border: 0; padding: 0; color: var(--muted); }
+
+/* checklist */
+.check { list-style: none; padding: 0; margin: 12px 0 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.check li { margin: 0; max-width: none; }
+.check label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; padding: 9px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
+.check input { margin-top: 5px; width: 17px; height: 17px; accent-color: var(--accent); flex: none; }
+.check input:checked + span { color: var(--muted); text-decoration: line-through; }
+.progress { font-size: .9rem; color: var(--muted); margin-bottom: 8px; }
+
+details.fold { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0 16px; margin: 10px 0; }
+details.fold summary { cursor: pointer; padding: 12px 0; font-weight: 500; }
+details.fold[open] { padding-bottom: 6px; }
+
+.pill { display: inline-block; font-size: .78rem; padding: 1px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 500; white-space: nowrap; }
+footer.end { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 0; padding-block: 20px 60px; }
+  .toc { display: none; }
+  .menu { display: block; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; margin: 0 -16px 12px; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .menu summary { cursor: pointer; font-weight: 500; padding: 6px 0; }
+  .menu ol { list-style: none; padding: 6px 0 4px; margin: 0; display: grid; gap: 2px; max-height: 60vh; overflow-y: auto; }
+  .menu a { display: block; padding: 7px 8px; border-radius: 6px; text-decoration: none; color: var(--ink); }
+  .menu a:hover { background: var(--accent-soft); }
+  ol.steps > li { padding: 14px 14px 14px 50px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol id="toc-list"></ol>
+  </nav>
+
+  <main>
+    <details class="menu"><summary>Contents</summary><ol id="menu-list"></ol></details>
+
+    <header class="top">
+      <p class="kicker">Tester guide</p>
+      <h1>Marchmaker Testing Guide</h1>
+      <p class="lede">Marchmaker is a subscription service that makes a small number of human-reviewed marriage introductions in India. This guide takes you from an empty computer to a finished introduction between two members, and lists everything else worth checking along the way.</p>
+    </header>
+
+    <!-- ============================================================ 0 -->
+    <section id="overview">
+      <h2 class="sec">Start here <span class="tag">Overview</span></h2>
+      <p class="sec-sub">Read this page first. It tells you what you are testing, where to open it and which logins to use.</p>
+
+      <h3>What the platform does</h3>
+      <ul>
+        <li><strong>Members</strong> register, build a profile, upload photos, verify their ID and set preferences.</li>
+        <li><strong>The admin team</strong> reviews every profile, photo and ID, and approves every match by hand.</li>
+        <li><strong>Introductions</strong> are released to both people. Each says yes or no. A credit is spent only when <em>both</em> say yes, and then messaging opens.</li>
+        <li>There is no swiping and no browsing of other members.</li>
+      </ul>
+
+      <h3>The whole journey in one line</h3>
+      <ol class="flow" aria-label="Journey">
+        <li>Register</li><li class="sep">→</li>
+        <li>Confirm email</li><li class="sep">→</li>
+        <li>Fill profile + photos</li><li class="sep">→</li>
+        <li class="admin">Admin approves profile + photos</li><li class="sep">→</li>
+        <li>Upload ID + selfie</li><li class="sep">→</li>
+        <li class="admin">Admin approves ID</li><li class="sep">→</li>
+        <li>Set preferences</li><li class="sep">→</li>
+        <li class="admin">Admin runs matching and approves a match</li><li class="sep">→</li>
+        <li>Match is released</li><li class="sep">→</li>
+        <li>Both say yes</li><li class="sep">→</li>
+        <li>Chat opens</li>
+      </ol>
+      <p>Purple steps are done by an admin in the admin console. Everything else is done as a member on the member site. You will need <strong>two members</strong> (one woman and one man) to see a match through.</p>
+
+      <h3>Where to open things</h3>
+      <p>After setup, three programs run on your own computer. Nothing here is on the internet.</p>
+      <div class="cards">
+        <div class="card">
+          <h4>Member site</h4>
+          <div class="kv"><span class="k">URL</span><span class="v">http://localhost:5173</span><button class="copy" data-copy="http://localhost:5173">Copy</button></div>
+          <div class="kv"><span class="k">Use it for</span><span class="v" style="font-family:var(--font-body)">Registering, profile, matches</span></div>
+        </div>
+        <div class="card admin">
+          <h4>Admin console</h4>
+          <div class="kv"><span class="k">URL</span><span class="v">http://localhost:5174</span><button class="copy" data-copy="http://localhost:5174">Copy</button></div>
+          <div class="kv"><span class="k">Email</span><span class="v">admin@example.com</span><button class="copy" data-copy="admin@example.com">Copy</button></div>
+          <div class="kv"><span class="k">Password</span><span class="v">Admin@12345</span><button class="copy" data-copy="Admin@12345">Copy</button></div>
+        </div>
+        <div class="card">
+          <h4>API (behind the scenes)</h4>
+          <div class="kv"><span class="k">Health</span><span class="v">http://localhost:4000/healthz</span><button class="copy" data-copy="http://localhost:4000/healthz">Copy</button></div>
+          <div class="kv"><span class="k">API docs</span><span class="v">http://localhost:4000/api/docs</span><button class="copy" data-copy="http://localhost:4000/api/docs">Copy</button></div>
+        </div>
+      </div>
+      <div class="note warn">
+        <span class="t">The admin login only exists after setup</span>
+        <p>The admin account is created in <a href="#seed">section 4</a>. If you were given a link to a ready-made copy of the app, the account already exists and you can skip that step. These logins are for testing only. Never reuse the password anywhere else.</p>
+      </div>
+
+      <h3>Rules that keep your two sign-ins apart</h3>
+      <ul>
+        <li>Use a <strong>separate private (incognito) window</strong> for each person you sign in as. Two member accounts in one normal window share one session and will log each other out.</li>
+        <li>The admin console keeps its own sign-in, so you can stay signed in to the admin console and one member at the same time.</li>
+        <li>Use <code>localhost</code> in every address. Do not switch to <code>127.0.0.1</code> for the member site.</li>
+      </ul>
+    </section>
+
+    <!-- ============================================================ 1 -->
+    <section id="prereq">
+      <h2 class="sec">1. Before you start <span class="tag">Setup</span></h2>
+      <p class="sec-sub">Install these once. Allow about 30 minutes for the whole setup.</p>
+      <div class="tw"><table>
+        <thead><tr><th>You need</th><th>Version</th><th>Check with</th></tr></thead>
+        <tbody>
+          <tr><td>Node.js</td><td>20 or newer (24 works)</td><td><code>node -v</code></td></tr>
+          <tr><td>pnpm</td><td>9.15 (any 9.x)</td><td><code>pnpm -v</code> (get it with <code>corepack enable</code>)</td></tr>
+          <tr><td>Git</td><td>any recent version</td><td><code>git --version</code></td></tr>
+          <tr><td>A MongoDB database</td><td>MongoDB Atlas free tier</td><td>Created in the next step</td></tr>
+        </tbody>
+      </table></div>
+      <p>Redis and Docker are <strong>not</strong> needed. Without Redis the background worker runs jobs inside its own process, which is fine for testing.</p>
+
+      <h3>Create a free MongoDB Atlas database</h3>
+      <ol class="steps">
+        <li>Sign up at <a href="https://www.mongodb.com/cloud/atlas/register" target="_blank" rel="noopener">mongodb.com/cloud/atlas</a> and create a free <strong>M0</strong> cluster. Choose any region.</li>
+        <li>Under <strong>Database Access</strong>, add a user with a username and password. Write both down.</li>
+        <li>Under <strong>Network Access</strong>, add the address <code>0.0.0.0/0</code> (allow from anywhere). This is acceptable for a throwaway test database.</li>
+        <li>Press <strong>Connect</strong>, then <strong>Drivers</strong>, and copy the connection string. It looks like <code>mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/</code>.
+          <span class="expect"><b>Result:</b> you have one connection string. Put your own password where it says PASSWORD. Add a database name before the <code>?</code>, for example <code>/marchmaker?</code>.</span></li>
+      </ol>
+      <div class="note info"><span class="t">Why Atlas and not a local MongoDB</span><p>The app uses database transactions, which need a replica set. Atlas gives you one automatically. A plain local MongoDB does not.</p></div>
+    </section>
+
+    <!-- ============================================================ 2 -->
+    <section id="backend">
+      <h2 class="sec">2. Set up the backend <span class="tag">Setup</span></h2>
+      <p class="sec-sub">The backend is the API plus a background worker.</p>
+      <div class="note warn"><span class="t">Folder names matter</span><p>The two projects must sit <strong>next to each other</strong> in one parent folder and keep the names <code>marchmaker_backend</code> and <code>marchmaker_frontend</code>. The frontend reads a shared package from the backend folder by that path.</p></div>
+
+      <ol class="steps">
+        <li><strong>Download the code.</strong> Make an empty folder, open a terminal in it and run:
+          <div class="code"><span class="lbl">Terminal</span><pre>git clone https://github.com/Manish-93web/marchmaker_backend.git
+git clone https://github.com/Manish-93web/marchmaker_frontend.git</pre><button class="copy">Copy</button></div>
+          <span class="expect"><b>Result:</b> two folders, <code>marchmaker_backend</code> and <code>marchmaker_frontend</code>, side by side.</span>
+        </li>
+        <li><strong>Install the backend packages.</strong>
+          <div class="code"><span class="lbl">Terminal</span><pre>cd marchmaker_backend
+pnpm install
+pnpm --filter @marchmaker/shared build</pre><button class="copy">Copy</button></div>
+          <span class="expect"><b>Result:</b> no red errors. The last command prints a build success message.</span>
+        </li>
+        <li><strong>Create the settings file for the API.</strong> Make a new file called <code>.env</code> inside <code>marchmaker_backend/apps/api/</code> with exactly this content. Replace the connection string with yours from the previous section.
+          <div class="code"><span class="lbl">apps/api/.env</span><pre>NODE_ENV=development
+MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/marchmaker?retryWrites=true&amp;w=majority
+EMAIL_PROVIDER=mock
+STORAGE_PROVIDER=local
+STAFF_MFA_REQUIRED=false</pre><button class="copy">Copy</button></div>
+        </li>
+        <li><strong>Copy the same file for the worker.</strong> Save the identical content as <code>marchmaker_backend/apps/worker/.env</code>.
+          <span class="expect"><b>Result:</b> two files with the same lines, one in <code>apps/api</code> and one in <code>apps/worker</code>.</span>
+        </li>
+      </ol>
+
+      <details class="fold"><summary>What each line does</summary>
+        <div class="tw"><table>
+          <thead><tr><th>Setting</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>MONGODB_URI</code></td><td>Your database. This is the only value you must change.</td></tr>
+            <tr><td><code>EMAIL_PROVIDER=mock</code></td><td>No real email is sent. The text of every email, including confirmation links, is printed in the API terminal window.</td></tr>
+            <tr><td><code>STORAGE_PROVIDER=local</code></td><td>Uploaded photos and ID images are saved in a <code>.data</code> folder on your computer instead of cloud storage.</td></tr>
+            <tr><td><code>STAFF_MFA_REQUIRED=false</code></td><td>The admin signs in with email and password only, with no authenticator code. This is for testing and the app refuses to start in production with it.</td></tr>
+          </tbody>
+        </table></div>
+        <p>Payments, ID checks, SMS, WhatsApp and push are all simulated by default, so no keys are needed.</p>
+      </details>
+
+      <details class="fold"><summary>Optional lines you may need</summary>
+        <ul>
+          <li>If the API cannot find your cluster and the error mentions <code>ECONNREFUSED</code> or SRV, add <code>DNS_SERVERS=8.8.8.8,1.1.1.1</code>.</li>
+          <li>Never leave a setting as <code>NAME=</code> with nothing after it. The app rejects empty values. Delete the line instead.</li>
+          <li>For Google sign-in see <a href="#google">section 6.5</a>.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- ============================================================ 3 -->
+    <section id="frontend">
+      <h2 class="sec">3. Set up the frontend <span class="tag">Setup</span></h2>
+      <p class="sec-sub">The frontend is the member site and the admin console.</p>
+      <ol class="steps">
+        <li><strong>Install the packages.</strong> In a terminal, go to the frontend folder:
+          <div class="code"><span class="lbl">Terminal</span><pre>cd marchmaker_frontend
+pnpm install</pre><button class="copy">Copy</button></div>
+          <span class="expect"><b>Result:</b> the install finishes without errors. No settings file is needed on the frontend.</span>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ 4 -->
+    <section id="seed">
+      <h2 class="sec">4. Create the admin and demo data <span class="tag">Setup</span></h2>
+      <p class="sec-sub">Run these once, from the backend folder. They fill your empty database.</p>
+
+      <h3>4.1 Create the admin account</h3>
+      <p>Pick the block for your system.</p>
+      <div class="code"><span class="lbl">Windows PowerShell</span><pre>cd marchmaker_backend
+$env:SEED_ADMIN_EMAIL='admin@example.com'
+$env:SEED_ADMIN_PASSWORD='Admin@12345'
+pnpm --filter @marchmaker/api seed</pre><button class="copy">Copy</button></div>
+      <div class="code"><span class="lbl">macOS / Linux / Git Bash</span><pre>cd marchmaker_backend
+SEED_ADMIN_EMAIL=admin@example.com SEED_ADMIN_PASSWORD='Admin@12345' pnpm --filter @marchmaker/api seed</pre><button class="copy">Copy</button></div>
+      <span class="expect" style="max-width:74ch"><b>Result:</b> the output includes “super admin ensured”. It also loads the legal documents, plans and question banks the app needs.</span>
+
+      <h3>4.2 Add demo members (recommended)</h3>
+      <p>This adds 40 ready-made members with approved profiles and photos, plus sample matches and introductions. It gives the matching engine people to work with and gives you a full admin console to look at.</p>
+      <div class="code"><span class="lbl">Terminal (any system)</span><pre>pnpm --filter @marchmaker/api seed:demo</pre><button class="copy">Copy</button></div>
+      <span class="expect" style="max-width:74ch"><b>Result:</b> “demo members ensured” with 40 members, then “demo data ready”.</span>
+      <p style="margin-top:12px">Demo members use addresses ending in <code>@demo.marchmaker.invalid</code>, which can never receive real mail. Their shared password is <code>DemoPass#2026</code>. One example login is <code>aanya.sharma0@demo.marchmaker.invalid</code>. To remove them all later run the same command with <code>-- --reset</code>.</p>
+      <div class="note info"><span class="t">Optional</span><p>The main walkthrough below creates its own two members from scratch, because that is the real customer path. The demo members are for looking around and for extra matches.</p></div>
+    </section>
+
+    <!-- ============================================================ 5 -->
+    <section id="start">
+      <h2 class="sec">5. Start everything <span class="tag">Setup</span></h2>
+      <p class="sec-sub">You need two terminal windows and they must stay open while you test.</p>
+      <ol class="steps">
+        <li><strong>Terminal 1: backend.</strong>
+          <div class="code"><span class="lbl">Terminal 1</span><pre>cd marchmaker_backend
+pnpm dev</pre><button class="copy">Copy</button></div>
+          <span class="expect"><b>Wait for:</b> a line saying <b>mongo connected</b> and a line saying <b>api listening</b> on port 4000. The worker prints that it is running events in this process.</span>
+        </li>
+        <li><strong>Terminal 2: frontend.</strong>
+          <div class="code"><span class="lbl">Terminal 2</span><pre>cd marchmaker_frontend
+pnpm dev</pre><button class="copy">Copy</button></div>
+          <span class="expect"><b>Wait for:</b> two addresses, <code>localhost:5173</code> (member site) and <code>localhost:5174</code> (admin console).</span>
+        </li>
+        <li><strong>Check the API is alive.</strong> Open <a href="http://localhost:4000/healthz" target="_blank" rel="noopener">http://localhost:4000/healthz</a> in a browser.
+          <span class="expect"><b>Result:</b> a short message with status “ok”.</span>
+        </li>
+        <li><strong>Open the member site</strong> at <a href="http://localhost:5173" target="_blank" rel="noopener">http://localhost:5173</a>.
+          <span class="expect"><b>Result:</b> the Marchmaker home page in a light theme.</span>
+        </li>
+      </ol>
+      <div class="note bad"><span class="t">If the member site shows “proxy error” or ECONNREFUSED</span><p>The API is not running yet or it stopped. Look at Terminal 1. The API only starts listening after it connects to MongoDB, so give it a few seconds. If it stopped with an “Invalid environment” message, a line in a <code>.env</code> file is wrong or empty.</p></div>
+      <div class="note info"><span class="t">Where emails and codes appear</span><p>Because email is simulated, <strong>every email the app “sends” is printed in Terminal 1</strong>, including the text and the link. Whenever this guide says “find the link in the API terminal”, look for a line containing <code>mock email captured</code> and read the <code>text</code> field. Text-message codes appear the same way as <code>mock sms captured</code>.</p></div>
+    </section>
+
+    <!-- ============================================================ 6 -->
+    <section id="register">
+      <h2 class="sec">6. Member one: register and sign in <span class="tag">Part A</span></h2>
+      <p class="sec-sub">Open a <strong>private window</strong> for this member. You will create Member one as a <strong>man</strong>.</p>
+
+      <h3>6.1 Register</h3>
+      <ol class="steps">
+        <li>Go to <code>http://localhost:5173</code> and press <strong>Get started</strong>. (You can also open <code>/register</code> directly.)</li>
+        <li>Fill in the form. Use these example values or your own:
+          <div class="tw"><table>
+            <thead><tr><th>Field</th><th>Enter</th><th>Rule</th></tr></thead>
+            <tbody>
+              <tr><td>First name</td><td>Rohan</td><td>Required</td></tr>
+              <tr><td>I am</td><td>A man</td><td>Choose one</td></tr>
+              <tr><td>Date of birth</td><td>2 Feb 1996</td><td>Women must be 18 or older. Men and non-binary people must be 21 or older.</td></tr>
+              <tr><td>Email</td><td>rohan@test.com</td><td>Any address works, since no email is really sent. Use a different one per member.</td></tr>
+              <tr><td>Mobile number</td><td>(leave blank)</td><td>Optional. 10 digits if you fill it.</td></tr>
+              <tr><td>Password</td><td>Passw0rd-Test1</td><td>At least 10 characters with upper case, lower case and a number</td></tr>
+              <tr><td>Terms</td><td>Tick the box</td><td>Required</td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li>Press <strong>Create account</strong>.
+          <span class="expect"><b>Result:</b> a “Check your inbox” message saying a confirmation link was sent. The app gives the same message even if the email already exists. That is deliberate, so nobody can discover who has an account.</span>
+        </li>
+        <li><strong>Find the link.</strong> Switch to Terminal 1 and find the line <code>mock email captured</code> with the subject <em>Confirm your email</em>. The <code>text</code> contains a link that looks like <code>http://localhost:5173/verify-email?token=…</code>. Copy the whole link.</li>
+        <li>Paste the link into the same private window.
+          <span class="expect"><b>Result:</b> a page titled “Email confirmed” with a <strong>Continue</strong> button. Then sign in.</span>
+        </li>
+      </ol>
+
+      <h3>6.2 Sign in</h3>
+      <ol class="steps">
+        <li>Go to <code>/login</code>, enter the email and password, and press <strong>Sign in</strong>.
+          <span class="expect"><b>Result:</b> you land on your <strong>Dashboard</strong> and it says “Hello, Rohan”. The journey bar shows <strong>Account</strong> ticked and <strong>Profile</strong> as the current step.</span>
+        </li>
+      </ol>
+      <p>If you sign in before confirming the email, the dashboard shows “Please confirm your email address to continue”. Use the resend option, then find the new link in the terminal.</p>
+
+      <h3>6.3 Things to try on the sign-in and sign-up screens</h3>
+      <ul class="check" id="chk-auth">
+        <li><label><input type="checkbox"><span>A wrong password shows “Email or password is incorrect” and does not reveal whether the email exists.</span></label></li>
+        <li><label><input type="checkbox"><span>After 5 wrong passwords the account is locked for a short, growing time.</span></label></li>
+        <li><label><input type="checkbox"><span>Registering under 18 (woman) or under 21 (man) shows an age message.</span></label></li>
+        <li><label><input type="checkbox"><span>A weak password shows the strength bar and is refused.</span></label></li>
+        <li><label><input type="checkbox"><span>Registering the same email twice gives the same neutral message, and a “you already have an account” email appears in Terminal 1.</span></label></li>
+        <li><label><input type="checkbox"><span>The page fits on one screen with no scrolling on a normal laptop.</span></label></li>
+      </ul>
+
+      <h3>6.4 Other ways in</h3>
+      <ul>
+        <li><strong>Forgot password:</strong> on the sign-in page choose <em>Forgot your password?</em>, enter the email, then take the reset link from Terminal 1 and set a new password.</li>
+        <li><strong>Mobile code:</strong> choose <em>Sign in with a mobile code instead</em> (<code>/login/code</code>). The 6-digit code appears in Terminal 1 as <code>mock sms captured</code>. This works for an account that has a verified mobile number.</li>
+        <li><strong>Language and theme:</strong> the header has an English / Hindi switch and a light / dark toggle. The site opens in light theme by default.</li>
+      </ul>
+
+      <h3 id="google">6.5 Google sign-in (optional)</h3>
+      <p>The sign-in and register pages show a Google button. Until a Google client ID is configured it appears greyed out with a short note. To switch it on you need your own client ID:</p>
+      <ol>
+        <li>In <a href="https://console.cloud.google.com" target="_blank" rel="noopener">Google Cloud Console</a> create a project, then <em>APIs and Services</em>, <em>OAuth consent screen</em> (External). Add your own Gmail under <strong>Test users</strong>.</li>
+        <li>Go to <em>Credentials</em>, <em>Create credentials</em>, <em>OAuth client ID</em>, type <strong>Web application</strong>. Under <em>Authorized JavaScript origins</em> add <code>http://localhost:5173</code>. Copy the client ID.</li>
+        <li>Add this line to both <code>.env</code> files, then restart Terminal 1:
+          <div class="code"><span class="lbl">apps/api/.env and apps/worker/.env</span><pre>GOOGLE_CLIENT_ID=YOUR-CLIENT-ID.apps.googleusercontent.com</pre><button class="copy">Copy</button></div>
+        </li>
+      </ol>
+      <p>A person who signs in with Google for the first time is asked for the things Google does not share (date of birth, gender, accepting the terms), then the account is created with the email already confirmed. Staff accounts cannot use Google.</p>
+    </section>
+
+    <!-- ============================================================ 7 -->
+    <section id="profile">
+      <h2 class="sec">7. Build the profile <span class="tag">Part B</span></h2>
+      <p class="sec-sub">Still as Member one. On the dashboard press <strong>Continue your profile</strong>. The wizard saves automatically as you type, so there is no Save button. Watch for “Saved” near the top of the form.</p>
+
+      <h3>7.1 The steps and what each needs</h3>
+      <p>A step shows a tick only when every required field is filled. Required fields are marked with *.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Step</th><th>Required</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td>Basics</td><td>First name, height, marital status</td><td>Rohan, 178 cm, Never married</td></tr>
+          <tr><td>Background</td><td>Religion, mother tongue, city, state</td><td>Hindu, Hindi, Gurgaon, Haryana</td></tr>
+          <tr><td>Education and career</td><td>Highest education, profession</td><td>B.Tech, Software engineer</td></tr>
+          <tr><td>Family</td><td>Family type</td><td>Nuclear</td></tr>
+          <tr><td>Lifestyle</td><td>Diet, smoking, drinking</td><td>Vegetarian, Never, Never</td></tr>
+          <tr><td>Values and life plans</td><td>Marriage timeline, wants kids, living with family</td><td>Within 1 year, Open, Yes</td></tr>
+          <tr><td>About you</td><td>“About me” of <strong>at least 50 characters</strong></td><td>A few honest sentences</td></tr>
+          <tr><td>Photos</td><td>At least one photo that has finished processing</td><td>See the next part</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note info"><span class="t">About you needs 50 characters</span><p>A short bio leaves the step without a tick. A counter under the box shows how many characters are still needed. The name you type in Basics also becomes your name across the site, for example in the dashboard greeting.</p></div>
+      <p>Fill in the steps in order, using <strong>Next</strong> and <strong>Back</strong>. You can leave and come back later. The wizard reopens at the first unfinished step.</p>
+
+      <h3>7.2 Upload photos</h3>
+      <ol class="steps">
+        <li>In the <strong>Photos</strong> step choose one or two clear pictures of a face.
+          <ul>
+            <li>File types: JPEG, PNG or WebP.</li>
+            <li>At least 200 × 200 pixels and no more than 10 MB each.</li>
+            <li>The first photo is the main photo. You can reorder later.</li>
+          </ul>
+        </li>
+        <li>After choosing a file the photo shows <strong>Processing…</strong>.
+          <span class="expect"><b>Result:</b> within a few seconds it changes to <b>Awaiting review</b>. The background worker is shrinking the picture, removing hidden location data and running an automated check.</span>
+        </li>
+      </ol>
+      <div class="note warn"><span class="t">Stuck on “Processing…”</span><p>The worker is not running. Check that Terminal 1 is still open and has no errors. The API and worker must use the same <code>STORAGE_PROVIDER=local</code> setting, which is why both <code>.env</code> files have it.</p></div>
+
+      <h3>7.3 Review and submit</h3>
+      <ol class="steps">
+        <li>Open the last step, <strong>Review and submit</strong>.
+          <span class="expect"><b>Result:</b> it lists any step still missing. When everything is complete the <strong>Submit for review</strong> button works.</span>
+        </li>
+        <li>Press <strong>Submit for review</strong>.
+          <span class="expect"><b>Result:</b> a message: “Submitted for review. Our team is reading your profile now. This usually takes up to 48 hours.” The profile is now locked for editing until the admin answers.</span>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ 8 -->
+    <section id="admin-profile">
+      <h2 class="sec">8. Admin: approve the profile and photos <span class="tag">Part C</span></h2>
+      <p class="sec-sub">Now play the admin. Use a different browser window from the member window.</p>
+
+      <h3>8.1 Sign in to the admin console</h3>
+      <ol class="steps">
+        <li>Open <strong>http://localhost:5174</strong>.</li>
+        <li>Sign in with <code>admin@example.com</code> and <code>Admin@12345</code>.
+          <span class="expect"><b>Result:</b> the console opens on the <strong>Dashboard</strong> with a menu down the left. No authenticator code is asked for in this test setup.</span>
+        </li>
+      </ol>
+
+      <h3>8.2 Approve the profile</h3>
+      <ol class="steps">
+        <li>In the left menu choose <strong>Profile review</strong>. Rohan's profile is in the queue.</li>
+        <li>Open it and read through every section.</li>
+        <li>Press <strong>Approve</strong> (keyboard shortcut <kbd>a</kbd>). To send it back instead, press <strong>Request changes</strong> (<kbd>c</kbd>), pick the steps to revisit and write a short note.
+          <span class="expect"><b>Result:</b> the status changes to approved. On the member side the dashboard shows the next step: verification.</span>
+        </li>
+      </ol>
+
+      <h3>8.3 Approve the photo</h3>
+      <ol class="steps">
+        <li>Choose <strong>Photo review</strong> in the menu.</li>
+        <li>Each pending photo has <strong>Approve</strong> and <strong>Reject</strong> buttons. Reject asks for a reason. Approve the photo.
+          <span class="expect"><b>Result:</b> the photo leaves the queue. Members only ever see approved photos, and other members see them blurred until an introduction allows more.</span>
+        </li>
+      </ol>
+      <p>Also try <strong>Request changes</strong> once on the profile, check the member sees the message, fix it as the member and submit again. A profile can only be edited by the member while it is a draft or has had changes requested.</p>
+    </section>
+
+    <!-- ============================================================ 9 -->
+    <section id="verify">
+      <h2 class="sec">9. ID verification <span class="tag">Part D</span></h2>
+      <p class="sec-sub">This step opens only after the profile is approved. Real ID vendors are not connected, so a person at the admin console checks the pictures by hand.</p>
+
+      <h3>9.1 Member uploads the documents</h3>
+      <ol class="steps">
+        <li>As Rohan, refresh the dashboard and press <strong>Verify your identity</strong> (or open <code>/verification</code>).</li>
+        <li><strong>Choose the ID type</strong> (Aadhaar masked, PAN card, Passport, Driving licence or Voter ID) and enter the <strong>last 4 characters</strong> of the number. The full number is never asked for.</li>
+        <li><strong>Upload the front</strong> of the ID, then the <strong>back</strong>. Use any JPEG, PNG or WebP image from 2 KB to 8 MB. A photo of any card or even a plain picture is fine for a test.
+          <span class="expect"><b>Result:</b> each box shows a green “done” mark. (The file chooser goes back to “No file chosen”. That is normal. Look for the green mark.)</span>
+        </li>
+        <li><strong>Selfie.</strong> Press <strong>Open camera</strong>, or <strong>Upload a photo instead</strong> if there is no camera.</li>
+        <li>When all three show done, press <strong>Submit for verification</strong>.
+          <span class="expect"><b>Result:</b> the page says your verification is being reviewed, usually within 24 hours.</span>
+        </li>
+      </ol>
+
+      <h3>9.2 Admin reviews</h3>
+      <ol class="steps">
+        <li>In the admin console open <strong>Verification</strong>. Open Rohan's case.</li>
+        <li>Look at the front, back and selfie. Tick the checklist items you agree with:
+          <ul>
+            <li>Name matches the profile</li>
+            <li>Date of birth matches</li>
+            <li>Selfie matches the document photo</li>
+            <li>Document is not expired</li>
+            <li>Document looks genuine</li>
+          </ul>
+        </li>
+        <li>Press <strong>Approve</strong>. You can also <strong>Reject</strong> or ask for a re-upload of specific items.
+          <span class="expect"><b>Result:</b> on the member side the ID badge is earned and the journey moves to <strong>Matching</strong>. Every view of an ID image by staff is logged.</span>
+        </li>
+      </ol>
+      <div class="note info"><span class="t">Privacy</span><p>ID images are kept apart from profile photos, only the verification team can open them, and they are deleted 30 days after a decision.</p></div>
+    </section>
+
+    <!-- ============================================================ 10 -->
+    <section id="prefs">
+      <h2 class="sec">10. Preferences and assessments <span class="tag">Part E</span></h2>
+      <p class="sec-sub">The matching engine needs to know what each person is looking for.</p>
+
+      <h3>10.1 Set preferences</h3>
+      <ol class="steps">
+        <li>As Rohan open the dashboard and press <strong>Your preferences</strong> (<code>/preferences</code>).</li>
+        <li>Set the following. Keep it <strong>wide</strong> so a match is likely:
+          <ul>
+            <li><strong>Age:</strong> 18 to 35</li>
+            <li><strong>Religion:</strong> Hindu</li>
+            <li><strong>Mother tongue:</strong> Hindi</li>
+            <li><strong>Diet:</strong> Vegetarian</li>
+          </ul>
+        </li>
+        <li>For each, choose whether it is a <strong>must-have</strong> or <strong>flexible</strong>, and how much it matters (1 to 3). A must-have removes anyone who fails it. A flexible one only changes the score.
+          <span class="expect"><b>Result:</b> an estimate of how many people fit appears. Saving keeps it.</span>
+        </li>
+      </ol>
+      <div class="note warn"><span class="t">Use flexible preferences while testing</span><p>Every must-have is a hard filter. A strict must-have, or one that depends on spelling (for example a city), can silently remove the only other person in your test and give you no match at all.</p></div>
+
+      <h3>10.2 Assessments (optional)</h3>
+      <p>On the dashboard open <strong>Assessments</strong> and complete one. Answers add to the match score. Leaving them blank is fine but lowers that part of the score to a neutral value.</p>
+    </section>
+
+    <!-- ============================================================ 11 -->
+    <section id="member2">
+      <h2 class="sec">11. Member two <span class="tag">Part F</span></h2>
+      <p class="sec-sub">A match needs another person. Repeat the earlier parts quickly for a second member in another private window.</p>
+      <ol class="steps">
+        <li><strong>Register Member two</strong> as a <strong>woman</strong>, for example first name Pooja, date of birth 5 May 2002, email <code>pooja@test.com</code>, password <code>Passw0rd-Test2</code>. Confirm the email through the link in Terminal 1 (<a href="#register">section 6</a>).</li>
+        <li><strong>Fill the profile</strong> with matching details: Hindu, Hindi, Vegetarian, a city and state, and a bio of 50 or more characters (<a href="#profile">section 7</a>). Upload a photo and submit.</li>
+        <li><strong>Admin:</strong> approve her profile and photo (<a href="#admin-profile">section 8</a>).</li>
+        <li><strong>Verification:</strong> upload ID and selfie, then approve it in the admin console (<a href="#verify">section 9</a>).</li>
+        <li><strong>Preferences:</strong> set age 20 to 40, Hindu, Hindi, Vegetarian, all flexible (<a href="#prefs">section 10</a>).
+          <span class="expect"><b>Result:</b> both members now show journey <strong>Matching</strong> on their dashboards.</span>
+        </li>
+      </ol>
+      <div class="note info"><span class="t">Shortcut</span><p>If you do not want to build a second member by hand, the demo members already have approved profiles, photos and IDs. Match Rohan with one of them instead, for example <code>aanya.sharma0@demo.marchmaker.invalid</code> (password <code>DemoPass#2026</code>).</p></div>
+    </section>
+
+    <!-- ============================================================ 12 -->
+    <section id="matching">
+      <h2 class="sec">12. Matching <span class="tag">Part G</span></h2>
+      <p class="sec-sub">Matching is done by the system, then checked and approved by a person. Nothing reaches a member until an admin approves it.</p>
+
+      <h3>12.1 How a pair is chosen</h3>
+      <ul>
+        <li><strong>Who is eligible:</strong> an active member with an approved profile, at least one approved photo and an approved ID.</li>
+        <li><strong>Hard filters first:</strong> every must-have, in both directions, plus blocks and pairs already rejected.</li>
+        <li><strong>Score from 0 to 1</strong> from three parts: how well each meets the other's preferences (35%), assessments (30%) and life plans such as timeline, children and living arrangements (35%). Members who have waited a long time get a small boost.</li>
+        <li><strong>Cut-off:</strong> pairs below <strong>0.55</strong> are not suggested. Each member gets at most 5 suggestions.</li>
+        <li>Members never see the number. They see plain reasons such as “same city” or “similar life plans”.</li>
+      </ul>
+
+      <h3>12.2 Shorten the waiting time (do this first)</h3>
+      <p>After an admin approves a match there is an <strong>undo window</strong> before it reaches the members. It is 10 minutes by default. For testing, make it instant.</p>
+      <ol class="steps">
+        <li>In the admin console open <strong>Matching settings</strong> (the last item in the menu).</li>
+        <li>In the <strong>Review</strong> card set <strong>Undo window (minutes)</strong> to <code>0</code> and save.</li>
+      </ol>
+
+      <h3>12.3 Run matching</h3>
+      <ol class="steps">
+        <li>Open <strong>Match review</strong> in the menu and press <strong>Run matching now</strong>.
+          <span class="expect"><b>Result:</b> a summary of how many suggestions were created. Rohan and Pooja should appear as a pair in the list with a score.</span>
+        </li>
+      </ol>
+      <div class="note warn"><span class="t">No suggestion for your two members?</span>
+        <ul>
+          <li>Open each member's preferences and loosen them. Make sure nothing is a must-have that the other person does not meet.</li>
+          <li>Check both have an approved profile, photo and ID. Without all three they are not in the pool.</li>
+          <li>The pair's score may be under 0.55. Complete an assessment on both, or lower <strong>Minimum fit to suggest</strong> in Matching settings.</li>
+          <li>Or skip the engine: on the Match review page press <strong>Manual introduction</strong>. You need each member's ID, which is the long code at the end of their page address under <strong>Members</strong> in the admin console.</li>
+        </ul>
+      </div>
+
+      <h3>12.4 Review and approve the match</h3>
+      <ol class="steps">
+        <li>Open the Rohan and Pooja suggestion.</li>
+        <li>Read both profiles side by side, the reasons, and the <strong>“why we chose them”</strong> text. You can edit that text. It is checked for things that are not allowed, such as contact details.</li>
+        <li>Press <strong>Approve</strong> (shortcut <kbd>a</kbd>) and confirm. Other choices are <strong>Reject</strong> (<kbd>r</kbd>), <strong>Snooze</strong> (<kbd>s</kbd>) and <strong>Escalate</strong> (<kbd>e</kbd>).
+          <span class="expect"><b>Result:</b> the match is approved and released. With an undo window of 0 this happens within about a minute, because the worker checks once a minute.</span>
+        </li>
+      </ol>
+      <p>Some pairs need two different approvers, for example when a member has a past suspension. If that applies, the page says a second reviewer must approve it.</p>
+    </section>
+
+    <!-- ============================================================ 13 -->
+    <section id="intro">
+      <h2 class="sec">13. Introduction, credits and chat <span class="tag">Part H</span></h2>
+      <p class="sec-sub">Now both members act. Use each member's own private window.</p>
+
+      <h3>13.1 Buy an introduction credit</h3>
+      <p>Each person needs one credit to say yes. Payment is simulated, so no money moves.</p>
+      <ol class="steps">
+        <li>As Rohan open <strong>Account</strong>, then <strong>Billing</strong> (<code>/billing</code>).</li>
+        <li>Under <strong>Or buy single introductions</strong>, press <strong>Buy</strong> on one pack. If it asks for a state for tax, choose any state.
+          <span class="expect"><b>Result:</b> a message that the payment worked (the page says “Test mode: payments are simulated”) and your credit count goes up by one.</span>
+        </li>
+        <li>Do the same as Pooja.</li>
+        <li>Open the invoice from the billing history. It is a printable tax invoice with GST split.</li>
+      </ol>
+
+      <h3>13.2 Say yes</h3>
+      <ol class="steps">
+        <li>As Rohan open <strong>Your introductions</strong> (<code>/introductions</code>). You see one card: the other person's name, age, city and profession, why you were matched, and a blurred photo. You also get a bell notification.</li>
+        <li>Press <strong>Say yes</strong>. Pressing <strong>Not for me</strong> would ask for a reason instead.
+          <span class="expect"><b>Result:</b> “You said yes. We will tell you when they respond.” One credit is <em>held</em>, not spent. The page explains that it comes straight back if the other person declines or does not reply in 7 days.</span>
+        </li>
+        <li>As Pooja open her introductions and press <strong>Say yes</strong> too.
+          <span class="expect"><b>Result:</b> the introduction becomes <strong>Connected</strong>. Both credits are now spent. More of each person's profile and photos is unlocked.</span>
+        </li>
+      </ol>
+
+      <h3>13.3 Message each other</h3>
+      <ol class="steps">
+        <li>Open <strong>Messages</strong> (<code>/messages</code>) as either member.</li>
+        <li>Send a first note. It has a minimum and maximum length.</li>
+        <li>Switch to the other member and reply.
+          <span class="expect"><b>Result:</b> your messages appear in the conversation for both people. Contact details are not shared automatically.</span>
+        </li>
+      </ol>
+      <p>Also try on the introduction: <strong>Report</strong> and <strong>Block</strong> (these go to the admin <strong>Moderation</strong> queue), and, later in the journey, the feedback requests the app sends.</p>
+
+      <h3>13.4 Watch it from the admin side</h3>
+      <ul>
+        <li><strong>Introductions monitor</strong> shows every introduction and its state.</li>
+        <li><strong>Payments</strong>, <strong>Subscriptions</strong> and <strong>Invoices</strong> list the simulated purchases.</li>
+        <li><strong>Audit log</strong> records who approved what and when.</li>
+      </ul>
+    </section>
+
+    <!-- ============================================================ 14 -->
+    <section id="more">
+      <h2 class="sec">14. Everything else worth checking <span class="tag">Part I</span></h2>
+      <p class="sec-sub">Tick items off as you go. Your ticks are saved in this browser.</p>
+
+      <h3>Member site</h3>
+      <ul class="check" id="chk-member">
+        <li><label><input type="checkbox"><span><strong>Home and marketing pages:</strong> How it works, Human review, Safety, Pricing, FAQ. Prices fit inside their cards at any window size.</span></label></li>
+        <li><label><input type="checkbox"><span><strong>Pricing and plans:</strong> toggle monthly and yearly, press a plan, buy it with simulated payment. Check the invoice PDF afterwards.</span></label></li>
+        <li><label><input type="checkbox"><span><strong>Notifications:</strong> the bell in the header lists events and can be marked as read. Settings lets you choose channels.</span></label></li>
+        <li><label><input type="checkbox"><span><strong>Settings:</strong> change language, theme and notification choices. Download your data. Schedule account deletion (it has a 14-day grace period and can be cancelled).</span></label></li>
+        <li><label><input type="checkbox"><span><strong>Invite (referrals):</strong> your invite link, wallet and rewards, under Account, then Invite.</span></label></li>
+        <li><label><input type="checkbox"><span><strong>Help (support):</strong> raise a ticket under Account, then Help. Find it again in the admin Support inbox and reply.</span></label></li>
+        <li><label><input type="checkbox"><span><strong>Safety centre:</strong> tips, and report or block from an introduction.</span></label></li>
+        <li><label><input type="checkbox"><span><strong>Hindi:</strong> switch the language and check the main pages are translated.</span></label></li>
+        <li><label><input type="checkbox"><span><strong>Dark theme:</strong> use the sun and moon button, refresh, and confirm the choice is remembered.</span></label></li>
+        <li><label><input type="checkbox"><span><strong>Small screens:</strong> shrink the window to phone width. The menu folds into a button and nothing scrolls sideways.</span></label></li>
+        <li><label><input type="checkbox"><span><strong>Success stories, e-guides and astrology</strong> pages open without errors.</span></label></li>
+      </ul>
+
+      <h3>Admin console</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Menu item</th><th>What to look at</th></tr></thead>
+        <tbody>
+          <tr><td>Dashboard, Insights</td><td>Counts of members, queues and funnel steps.</td></tr>
+          <tr><td>Members</td><td>Search, open a member, see their journey. Use this to find member IDs.</td></tr>
+          <tr><td>Profile review, Photo review, Verification</td><td>The three queues already used above.</td></tr>
+          <tr><td>Match review, Matching settings</td><td>Suggestions, approvals, the score cut-off, the undo window, daily limits.</td></tr>
+          <tr><td>Introductions monitor</td><td>Every introduction and its state.</td></tr>
+          <tr><td>Moderation, Appeals</td><td>Reports raised by members and appeals against decisions.</td></tr>
+          <tr><td>Support inbox</td><td>Tickets with response deadlines.</td></tr>
+          <tr><td>Payments, Subscriptions, Invoices, Payment webhooks, Coupons, Plans and packs</td><td>The money side. Create a coupon, then use it at checkout. Edit a plan price.</td></tr>
+          <tr><td>Referrals</td><td>Referral rewards and wallet adjustments.</td></tr>
+          <tr><td>Question banks, E-guides, Success stories, FAQ, Legal documents</td><td>Content the team manages. Publish a new version of a legal document.</td></tr>
+          <tr><td>Notifications, Jobs and providers, Data requests, Operations settings, Feature flags, Experiments</td><td>System controls and data export and deletion requests.</td></tr>
+          <tr><td>Team, Roles and permissions, Audit log</td><td>Add a staff member, change what a role may do and read the audit trail.</td></tr>
+        </tbody>
+      </table></div>
+      <p>The menu only shows items the signed-in role is allowed to use. The admin account created above is a super admin, so it sees everything.</p>
+    </section>
+
+    <!-- ============================================================ 15 -->
+    <section id="accounts">
+      <h2 class="sec">15. Logins and addresses <span class="tag">Reference</span></h2>
+      <div class="tw"><table>
+        <thead><tr><th>Who</th><th>Where</th><th>Email</th><th>Password</th></tr></thead>
+        <tbody>
+          <tr><td>Admin (super admin)</td><td><code>http://localhost:5174</code></td><td><code>admin@example.com</code></td><td><code>Admin@12345</code></td></tr>
+          <tr><td>Demo members (40)</td><td><code>http://localhost:5173</code></td><td><code>aanya.sharma0@demo.marchmaker.invalid</code> and similar</td><td><code>DemoPass#2026</code></td></tr>
+          <tr><td>Member one (you create)</td><td><code>http://localhost:5173</code></td><td>for example <code>rohan@test.com</code></td><td>what you chose</td></tr>
+          <tr><td>Member two (you create)</td><td><code>http://localhost:5173</code></td><td>for example <code>pooja@test.com</code></td><td>what you chose</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note bad"><span class="t">Keep this guide private</span><p>It contains test logins. They only work against your own test database, but do not post this page publicly, and do not reuse these passwords.</p></div>
+
+      <h3>Journey status reference</h3>
+      <p>The dashboard shows a bar with these stages: Account, Profile, Verification, Profile review, Matching, Introductions, Connected. Behind it the member has one of these states.</p>
+      <div class="tw"><table>
+        <thead><tr><th>State</th><th>How a member gets there</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill">registered</span></td><td>Created the account, email not yet confirmed.</td></tr>
+          <tr><td><span class="pill">email_verified</span></td><td>Confirmed the email, or signed in with Google.</td></tr>
+          <tr><td><span class="pill">profile_in_progress</span></td><td>Started filling the profile.</td></tr>
+          <tr><td><span class="pill">profile_submitted</span></td><td>Pressed Submit for review. Waiting on the admin.</td></tr>
+          <tr><td><span class="pill">profile_changes_requested</span></td><td>Admin asked for edits.</td></tr>
+          <tr><td><span class="pill">profile_approved</span></td><td>Admin approved the profile. ID verification opens.</td></tr>
+          <tr><td><span class="pill">verification_pending</span></td><td>ID submitted. Waiting on the admin.</td></tr>
+          <tr><td><span class="pill">verification_rejected</span></td><td>ID refused. Upload again.</td></tr>
+          <tr><td><span class="pill">matching_active</span></td><td>Approved profile, photo and ID. In the matching pool.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============================================================ 16 -->
+    <section id="trouble">
+      <h2 class="sec">16. If something goes wrong <span class="tag">Help</span></h2>
+      <div class="tw"><table>
+        <thead><tr><th>What you see</th><th>Why, and what to do</th></tr></thead>
+        <tbody>
+          <tr><td>Member site shows “proxy error” or ECONNREFUSED on <code>/api/…</code></td><td>The API is not running. Look at Terminal 1. Wait for “api listening”. If it stopped, read the last error.</td></tr>
+          <tr><td>API stops with “Invalid environment: …”</td><td>A <code>.env</code> line is empty or malformed. Delete any <code>NAME=</code> line that has no value.</td></tr>
+          <tr><td>API cannot connect to MongoDB (SRV or ECONNREFUSED)</td><td>Add <code>DNS_SERVERS=8.8.8.8,1.1.1.1</code> to both <code>.env</code> files. Also check Network Access allows your address, and that the user and password are right.</td></tr>
+          <tr><td>“Please confirm your email address to continue”</td><td>Press resend on that banner, then take the new link from Terminal 1. Real emails are not sent.</td></tr>
+          <tr><td>Photo stays on “Processing…”</td><td>The worker is not running, or the API and worker have different storage settings. Both <code>.env</code> files need <code>STORAGE_PROVIDER=local</code>. Restart Terminal 1.</td></tr>
+          <tr><td>Verification upload shows nothing</td><td>Use a JPEG, PNG or WebP of 2 KB to 8 MB. Look for the green “done” mark rather than the file chooser text.</td></tr>
+          <tr><td>Admin asks for an authenticator code</td><td><code>STAFF_MFA_REQUIRED=false</code> is missing from <code>apps/api/.env</code>, or the API was not restarted after adding it.</td></tr>
+          <tr><td>Member site says “Hello, Admin”</td><td>The browser still has an old shared sign-in. Sign out, or clear site data for <code>localhost</code>, and use private windows for each person.</td></tr>
+          <tr><td>No suggestion appears after “Run matching now”</td><td>See the checklist in <a href="#matching">section 12.3</a>. Most often: no preferences saved, a strict must-have, or a score under 0.55.</td></tr>
+          <tr><td>Nothing reaches the members after approving a match</td><td>The undo window has not ended. Set it to 0 (section 12.2) and wait about a minute. The worker must be running.</td></tr>
+          <tr><td>Saying yes shows a “no credit” message</td><td>Buy a credit first in Billing (section 13.1).</td></tr>
+          <tr><td>Google button is grey with a development note</td><td>No <code>GOOGLE_CLIENT_ID</code> is set. See section 6.5.</td></tr>
+          <tr><td>Google says “origin_mismatch” or “access blocked”</td><td><code>http://localhost:5173</code> is missing from the client's authorized origins, or your Gmail is not listed as a test user.</td></tr>
+          <tr><td>“Port already in use”</td><td>An older copy is still running. Close the old terminal windows and start again.</td></tr>
+          <tr><td>“Your session could not be verified” (a 403)</td><td>Refresh the page. If it repeats, clear site data for <code>localhost</code> and sign in again.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============================================================ 17 -->
+    <section id="simulated">
+      <h2 class="sec">17. What is simulated <span class="tag">Know this</span></h2>
+      <p class="sec-sub">So you do not report these as bugs.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Feature</th><th>In this test setup</th></tr></thead>
+        <tbody>
+          <tr><td>Email</td><td>Printed in the API terminal, never delivered.</td></tr>
+          <tr><td>SMS, WhatsApp, push messages</td><td>Printed or logged, never delivered.</td></tr>
+          <tr><td>Payments</td><td>Instant and fake. No card is charged. Webhooks, refunds and invoices still run.</td></tr>
+          <tr><td>ID verification by a vendor</td><td>Off. A person checks the pictures by hand in the admin console.</td></tr>
+          <tr><td>Photo and ID storage</td><td>Files on your own disk in a <code>.data</code> folder.</td></tr>
+          <tr><td>Astrology, voice calls, image moderation</td><td>Mock providers with sample answers.</td></tr>
+          <tr><td>Error reporting and analytics</td><td>Not connected.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============================================================ 18 -->
+    <section id="final">
+      <h2 class="sec">18. Final checklist <span class="tag">Sign-off</span></h2>
+      <p class="sec-sub">If you can tick every line, the main product works end to end.</p>
+      <div class="progress" id="final-progress"></div>
+      <ul class="check" id="chk-final">
+        <li><label><input type="checkbox"><span>Backend and frontend both started and the health address answered “ok”.</span></label></li>
+        <li><label><input type="checkbox"><span>Member one registered, confirmed the email from the terminal and signed in.</span></label></li>
+        <li><label><input type="checkbox"><span>All eight profile steps show a tick and the profile was submitted.</span></label></li>
+        <li><label><input type="checkbox"><span>A photo went from Processing to Awaiting review.</span></label></li>
+        <li><label><input type="checkbox"><span>Admin signed in, approved the profile and approved the photo.</span></label></li>
+        <li><label><input type="checkbox"><span>ID and selfie were uploaded, submitted and approved by the admin.</span></label></li>
+        <li><label><input type="checkbox"><span>Preferences were saved and the dashboard shows Matching.</span></label></li>
+        <li><label><input type="checkbox"><span>Member two went through the same steps.</span></label></li>
+        <li><label><input type="checkbox"><span>The undo window was set to 0 and Run matching now created a suggestion for the pair.</span></label></li>
+        <li><label><input type="checkbox"><span>The admin approved the match and it appeared on both members' introductions.</span></label></li>
+        <li><label><input type="checkbox"><span>Both members bought a credit, said yes, and the introduction became Connected.</span></label></li>
+        <li><label><input type="checkbox"><span>Messages were sent and received in both directions.</span></label></li>
+        <li><label><input type="checkbox"><span>The invoice opened as a PDF.</span></label></li>
+      </ul>
+      <footer class="end">When you report a problem, please include: the page address, what you pressed, what you expected, what happened, and the last few lines from Terminal 1. A screenshot helps.</footer>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  // ----- contents built from the section headings, so it never drifts from the page
+  var secs = Array.prototype.slice.call(document.querySelectorAll('main > section'));
+  var toc = document.getElementById('toc-list');
+  var menu = document.getElementById('menu-list');
+  var lastGroup = '';
+  secs.forEach(function (s) {
+    var h = s.querySelector('h2.sec'); if (!h) return;
+    var tag = h.querySelector('.tag');
+    var group = tag ? tag.textContent : '';
+    var title = h.childNodes[0].textContent.trim();
+    if (group !== lastGroup) {
+      var g = document.createElement('li'); g.className = 'grp'; g.textContent = group; toc.appendChild(g); lastGroup = group;
+    }
+    var li = document.createElement('li'); var a = document.createElement('a');
+    a.href = '#' + s.id; a.textContent = title; li.appendChild(a); toc.appendChild(li);
+    var li2 = document.createElement('li'); var a2 = document.createElement('a');
+    a2.href = '#' + s.id; a2.textContent = title; li2.appendChild(a2); menu.appendChild(li2);
+    a2.addEventListener('click', function () { var d = document.querySelector('details.menu'); if (d) d.open = false; });
+  });
+  var links = Array.prototype.slice.call(toc.querySelectorAll('a'));
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (l) { l.classList.toggle('on', l.getAttribute('href') === '#' + e.target.id); });
+        }
+      });
+    }, { rootMargin: '-10% 0px -80% 0px' });
+    secs.forEach(function (s) { io.observe(s); });
+  }
+
+  // ----- copy buttons
+  function copyText(text, btn) {
+    var done = function () { var old = btn.textContent; btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = old; }, 1400); };
+    var fallback = function () {
+      try {
+        var r = document.createRange(); var node = btn.closest('.code') ? btn.closest('.code').querySelector('pre') : null;
+        if (node) { r.selectNodeContents(node); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+      } catch (e) {}
+    };
+    try {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } catch (e) { fallback(); }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('button.copy'), function (b) {
+    b.type = 'button';
+    b.addEventListener('click', function () {
+      var text = b.getAttribute('data-copy');
+      if (!text) { var pre = b.parentNode.querySelector('pre'); text = pre ? pre.innerText : ''; }
+      copyText(text, b);
+    });
+  });
+
+  // ----- tick boxes remembered in this browser (fine if storage is unavailable)
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.check input[type=checkbox]'));
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem('mm-guide-ticks') || '{}'); } catch (e) { store = {}; }
+  function save() { try { localStorage.setItem('mm-guide-ticks', JSON.stringify(store)); } catch (e) {} }
+  function progress() {
+    var el = document.getElementById('final-progress'); if (!el) return;
+    var all = Array.prototype.slice.call(document.querySelectorAll('#chk-final input'));
+    var n = all.filter(function (x) { return x.checked; }).length;
+    el.textContent = n + ' of ' + all.length + ' done';
+  }
+  boxes.forEach(function (b, i) {
+    b.id = b.id || 'tick-' + i;
+    if (store[b.id]) b.checked = true;
+    b.addEventListener('change', function () { store[b.id] = b.checked; save(); progress(); });
+  });
+  progress();
+})();
+</script>
+
+</body>
+</html>
