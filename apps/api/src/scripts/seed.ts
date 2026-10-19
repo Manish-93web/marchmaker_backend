@@ -52,7 +52,9 @@ async function main() {
   const email = process.env.SEED_ADMIN_EMAIL?.toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD;
   if (email && password) {
-    if (password.length < 12) throw new Error('SEED_ADMIN_PASSWORD must be at least 12 characters');
+    // Production needs a long password; a shorter one is allowed only on a development machine.
+    const minLength = env.NODE_ENV === 'production' ? 12 : 8;
+    if (password.length < minLength) throw new Error(`SEED_ADMIN_PASSWORD must be at least ${minLength} characters`);
     const crypto = fieldCryptoFromEnv(env);
     await User.updateOne(
       { email },

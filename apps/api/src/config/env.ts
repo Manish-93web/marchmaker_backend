@@ -45,8 +45,8 @@ const envSchema = z.object({
   /** OAuth client id for Sign in with Google (Google Cloud console). Unset hides the button. */
   GOOGLE_CLIENT_ID: z.string().trim().min(10).optional(),
   STORAGE_PROVIDER: z.enum(['memory', 'local', 's3']).default('memory'),
-  /** Where the local development storage keeps files. */
-  LOCAL_STORAGE_DIR: z.string().default('./.data/storage'),
+  /** Where the local development storage keeps files. The API and the worker both run from their own folder under apps/, so this default lands in one shared place at the repo root. */
+  LOCAL_STORAGE_DIR: z.string().default('../../.data/storage'),
   S3_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().default('auto'),
   S3_ACCESS_KEY_ID: z.string().default(''),
