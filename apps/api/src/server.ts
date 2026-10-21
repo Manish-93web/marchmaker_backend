@@ -6,6 +6,7 @@ import { createMailer } from './lib/mailer';
 import { createSms } from './lib/sms';
 import { loadEnv, staffMfaBypass } from './config/env';
 import { processStuckPhotos } from './jobs/photoJobs';
+import { reconcile } from './services/billing';
 import { releaseDueMatches } from './services/matchReview';
 import { resolveKmsKeys } from './lib/keys';
 import { captureError, initSentry, flushSentry } from './lib/sentry';
@@ -50,6 +51,13 @@ async function main() {
   // Approved matches reach members once their undo window ends. The worker does this too; doing it here as well means a
   // match is never left waiting because the worker is down. Releasing is safe to run twice: each pair can become an
   // introduction only once.
+  // Payments are also checked here every 10 minutes (orders and subscriptions asked about, stuck webhooks retried), so
+  // credits arrive even if the worker is down. Every step is idempotent.
+  const billingTick = setInterval(() => {
+    reconcile(ctx).catch((err) => log.warn({ err }, 'billing reconcile failed'));
+  }, 10 * 60_000);
+  billingTick.unref();
+
   const releaseTick = setInterval(() => {
     releaseDueMatches(ctx).catch((err) => log.warn({ err }, 'match release pass failed'));
   }, 60_000);
@@ -60,6 +68,7 @@ async function main() {
     shuttingDown = true;
     clearInterval(photoSweep);
     clearInterval(releaseTick);
+    clearInterval(billingTick);
     log.info({ signal }, 'shutting down');
     const force = setTimeout(() => process.exit(1), 15_000);
     force.unref();

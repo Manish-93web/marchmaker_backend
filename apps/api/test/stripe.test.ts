@@ -13,6 +13,7 @@ import { StripeProvider, formEncode } from '../src/lib/stripe';
 import { MemorySms } from '../src/lib/sms';
 import { MemoryStorage } from '../src/lib/storage';
 import { Invoice, Order, Payment, Subscription } from '../src/models/billing';
+import { reconcile } from '../src/services/billing';
 import { User } from '../src/models/core';
 
 let mongod: MongoMemoryReplSet;
@@ -226,5 +227,59 @@ describe('Stripe purchases end to end', () => {
     const adj = signed({ id: 'evt_adj', type: 'invoice.paid', data: { object: { id: 'in_2', billing_reason: 'subscription_update', subscription: 'sub_123', amount_paid: 5000 } } });
     await request(t.app).post('/api/v1/webhooks/stripe').set(adj.headers).send(adj.raw).expect(200);
     expect(await Payment.countDocuments({ kind: 'subscription' })).toBe(1);
+  });
+
+  const paidSubscription = (ref: string, userId: string) => ({
+    data: [
+      {
+        id: 'sub_999',
+        status: 'active',
+        metadata: { ref, userId, planCode: 'premium', interval: 'monthly' },
+        current_period_start: Math.floor(Date.now() / 1000),
+        current_period_end: Math.floor(Date.now() / 1000) + 30 * 86_400,
+        items: { data: [{ id: 'si_9', price: { id: 'price_premium_m' } }] },
+        latest_invoice: { id: 'in_first', status: 'paid', amount_paid: 249_900, billing_reason: 'subscription_create', payment_intent: 'pi_first' },
+      },
+    ],
+  });
+
+  it('records the first payment and grants credits on return, even though no webhook ever arrived', async () => {
+    const t = setup();
+    const m = await member(t);
+    stubStripe({ 'POST /prices': () => ({ id: 'price_premium_m' }), 'POST /checkout/sessions': () => ({ id: 'cs_x', url: 'https://checkout.stripe.com/x' }) });
+    const ref = (await m.post('/billing/subscribe').send({ planCode: 'premium', interval: 'monthly' }).expect(201)).body.subscriptionId as string;
+
+    stubStripe({
+      'GET /subscriptions/search': () => paidSubscription(ref, m.id),
+      'GET /subscriptions/sub_999': () => paidSubscription(ref, m.id).data[0],
+    });
+    const out = await m.post('/billing/confirm').send({ subscriptionId: ref, paymentId: 'x', signature: 'x' }).expect(200);
+    expect(out.body.status).toBe('paid');
+    expect((await User.findById(m.id))!.creditBalance).toBeGreaterThan(0);
+    expect((await User.findById(m.id))!.plan?.planCode).toBe('premium');
+    expect(await Payment.countDocuments({ razorpayPaymentId: 'pi_first' })).toBe(1);
+
+    // Asking again never counts the same payment twice.
+    await m.post('/billing/confirm').send({ subscriptionId: ref, paymentId: 'x', signature: 'x' }).expect(200);
+    expect(await Payment.countDocuments({})).toBe(1);
+    expect(await Invoice.countDocuments({})).toBe(1);
+  });
+
+  it('repairs a subscription marked active with no payment recorded, when the periodic payment check runs', async () => {
+    const t = setup();
+    const m = await member(t);
+    const ref = 'sub_ref_stuckstuckstuck';
+    await Subscription.create({ userId: m.id, planCode: 'premium', interval: 'monthly', razorpaySubscriptionId: ref, razorpayPlanId: 'price_premium_m', status: 'active', currentPeriodEnd: new Date(Date.now() + 20 * 86_400_000) });
+    expect((await User.findById(m.id))!.creditBalance).toBe(0);
+
+    stubStripe({
+      'GET /subscriptions/search': () => paidSubscription(ref, m.id),
+      'GET /subscriptions/sub_999': () => paidSubscription(ref, m.id).data[0],
+    });
+    await reconcile(t.ctx);
+    expect((await User.findById(m.id))!.creditBalance).toBeGreaterThan(0);
+    expect(await Payment.countDocuments({ razorpaySubscriptionId: ref })).toBe(1);
+    await reconcile(t.ctx); // nothing more to do
+    expect(await Payment.countDocuments({ razorpaySubscriptionId: ref })).toBe(1);
   });
 });

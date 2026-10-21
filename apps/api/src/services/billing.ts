@@ -677,7 +677,12 @@ export async function reconcileOrder(ctx: AppContext, orderId: string): Promise<
 }
 
 async function syncSubscription(ctx: AppContext, razorpaySubscriptionId: string) {
-  const s = await needProvider(ctx).getSubscription(razorpaySubscriptionId);
+  const provider = needProvider(ctx);
+  // Record the paid invoice first, if the gateway can tell us about it, so a missing webhook never costs the member
+  // their credits. Recording is idempotent: the same payment is never counted twice.
+  const charge = await provider.latestSubscriptionCharge?.(razorpaySubscriptionId);
+  if (charge) await handleSubscriptionCharge(ctx, charge.subscription, { id: charge.payment.id, amount: charge.payment.amount, subscription_id: charge.payment.subscription_id, method: charge.payment.method });
+  const s = await provider.getSubscription(razorpaySubscriptionId);
   await applySubscriptionState({
     id: s.id,
     status: s.status,
@@ -745,6 +750,20 @@ export async function reconcile(ctx: AppContext, now = new Date()) {
       subscriptions++;
     } catch (err) {
       ctx.log.warn({ err, sub: s.razorpaySubscriptionId }, 'subscription reconcile failed');
+    }
+  }
+  // Subscriptions the gateway says are active but that we hold no payment for, or whose paid period has ended: ask the
+  // gateway about the invoice. Only gateways that can answer take part (see latestSubscriptionCharge).
+  if (ctx.payments.latestSubscriptionCharge) {
+    const paid = await Payment.distinct('razorpaySubscriptionId', { kind: 'subscription' });
+    const due = await Subscription.find({ status: 'active', $or: [{ razorpaySubscriptionId: { $nin: paid } }, { currentPeriodEnd: { $lte: now } }] }).limit(200);
+    for (const s of due) {
+      try {
+        await syncSubscription(ctx, s.razorpaySubscriptionId);
+        subscriptions++;
+      } catch (err) {
+        ctx.log.warn({ err, sub: s.razorpaySubscriptionId }, 'subscription payment check failed');
+      }
     }
   }
   let retried = 0;

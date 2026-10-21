@@ -201,6 +201,24 @@ export class StripeProvider implements PaymentProvider {
     return this.toSub(ref, await this.findSub(ref), true);
   }
 
+  async latestSubscriptionCharge(ref: string) {
+    const r = await this.call<{ data: (StripeSub & { latest_invoice?: { id: string; status?: string; amount_paid?: number; billing_reason?: string; payment_intent?: string | { id: string }; charge?: string } })[] }>(
+      'GET',
+      '/subscriptions/search',
+      { query: `metadata['ref']:'${ref.replace(/[^A-Za-z0-9_-]/g, '')}'`, limit: 1, expand: ['data.latest_invoice'] },
+    );
+    const s = r.data[0];
+    const inv = s?.latest_invoice;
+    if (!s || !inv || typeof inv !== 'object') return null;
+    // Only a paid first invoice or a paid renewal is a billing cycle; upgrade adjustments and unpaid invoices are not.
+    if (inv.status !== 'paid' || !inv.amount_paid || (inv.billing_reason !== 'subscription_create' && inv.billing_reason !== 'subscription_cycle')) return null;
+    const p = periodOf(s);
+    return {
+      subscription: { id: ref, status: 'active', plan_id: s.items?.data?.[0]?.price?.id, current_start: p.start, current_end: p.end, notes: s.metadata },
+      payment: { id: str(inv.payment_intent) ?? inv.charge ?? inv.id, amount: inv.amount_paid, subscription_id: ref, method: 'card' },
+    };
+  }
+
   async updateSubscription(ref: string, i: { planId: string; when: 'now' | 'cycle_end' }) {
     const s = await this.findSub(ref);
     const item = s?.items?.data?.[0];

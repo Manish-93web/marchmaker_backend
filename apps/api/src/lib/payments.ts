@@ -52,6 +52,12 @@ export interface PaymentProvider {
   refund(paymentId: string, amountPaise: number): Promise<{ id: string; status: string }>;
   /** Webhook: valid signature gives the parsed event, otherwise null. */
   verifyWebhook(raw: Buffer, headers: Record<string, string | undefined>): WebhookEvent | null | Promise<WebhookEvent | null>;
+  /**
+   * The newest paid invoice of a subscription, in the shapes the billing service records. Lets the first payment and each
+   * renewal be recorded by asking the gateway, so credits never depend on a webhook arriving. Gateways that always send
+   * reliable events leave this out.
+   */
+  latestSubscriptionCharge?(id: string): Promise<{ subscription: { id: string; status: string; plan_id?: string; current_start?: number; current_end?: number; notes?: Record<string, string> }; payment: { id: string; amount: number; subscription_id: string; method?: string } } | null>;
   /** Checkout callback signature. Only used to show "confirming"; never to grant anything. */
   verifyCheckout(i: { orderId?: string; subscriptionId?: string; paymentId: string; signature: string }): boolean;
 }
