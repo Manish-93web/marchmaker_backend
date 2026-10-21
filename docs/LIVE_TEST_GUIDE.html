@@ -158,6 +158,29 @@ footer.end { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--li
   ol.steps > li { padding: 14px 14px 14px 50px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Printing and PDF: a plain light page, no sidebar, and blocks kept whole across page breaks. */
+@media print {
+  :root, :root[data-theme="dark"] {
+    --bg: #FFFFFF; --surface: #FFFFFF; --ink: #1B1A24; --muted: #4F4C5E; --line: #D9D8E3;
+    --accent: #5B2A86; --accent-ink: #FFFFFF; --accent-soft: #EFE8F7; --code-bg: #F1F0F6;
+    --ok: #17724B; --ok-bg: #E5F5EC; --warn: #8F4A00; --warn-bg: #FFF1DC; --bad: #B42318; --bad-bg: #FDECEA; --info: #1D4F91; --info-bg: #E6EFFB;
+    color-scheme: light;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html { font-size: 14px; scroll-behavior: auto; }
+  body { padding-inline: 0; background: #fff; }
+  .toc, .menu, button.copy { display: none !important; }
+  .shell { display: block; max-width: none; padding-block: 0; }
+  main { max-width: none; }
+  section { padding-top: 22px; }
+  h2.sec, h3 { break-after: avoid; }
+  ol.steps > li, .note, .card, .tw, .check li, details.fold, tr { break-inside: avoid; }
+  .tw { overflow: visible; }
+  table { min-width: 0; }
+  .code pre { white-space: pre-wrap; padding-right: 16px; }
+  a { color: inherit; text-decoration: none; }
+}
 </style>
 
 </head>
