@@ -38,18 +38,18 @@ async function main() {
   server.keepAliveTimeout = 65_000;
   server.listen(env.PORT, () => log.info({ port: env.PORT }, 'api listening'));
 
-  // No job queue: the API also looks for photos left in "processing" and finishes them, so none stays stuck.
-  const photoSweep = !env.REDIS_URL
-    ? setInterval(() => {
-        processStuckPhotos(ctx).catch((err) => log.warn({ err }, 'photo recovery pass failed'));
-      }, 60_000)
-    : undefined;
-  photoSweep?.unref();
+  // Safety net in every setup: the API finishes photos left in "processing" for more than 90 seconds, so none stays
+  // stuck if the worker is slow, down, or its job queue is unreachable. A claim on each photo stops two processes
+  // resizing it at once, so this is safe to run beside a healthy worker.
+  const photoSweep = setInterval(() => {
+    processStuckPhotos(ctx).catch((err) => log.warn({ err }, 'photo recovery pass failed'));
+  }, 60_000);
+  photoSweep.unref();
 
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    if (photoSweep) clearInterval(photoSweep);
+    clearInterval(photoSweep);
     log.info({ signal }, 'shutting down');
     const force = setTimeout(() => process.exit(1), 15_000);
     force.unref();
