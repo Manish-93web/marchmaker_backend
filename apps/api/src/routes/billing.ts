@@ -30,9 +30,9 @@ const idParams = z.object({ id: id24 });
 
 const confirmSchema = z
   .object({
-    orderId: z.string().max(60).optional(),
-    subscriptionId: z.string().max(60).optional(),
-    paymentId: z.string().max(60),
+    orderId: z.string().max(120).optional(),
+    subscriptionId: z.string().max(120).optional(),
+    paymentId: z.string().max(120),
     signature: z.string().max(200),
   })
   .refine((v) => Boolean(v.orderId) !== Boolean(v.subscriptionId), { message: 'Send an order or a subscription' });
@@ -185,7 +185,7 @@ export function billingRouter(ctx: AppContext): Router {
 export function paymentsWebhookRouter(ctx: AppContext): Router {
   const r = Router();
   r.post(
-    '/razorpay',
+    ['/razorpay', '/stripe'],
     express.raw({ type: '*/*', limit: '512kb' }),
     asyncHandler(async (req, res) => {
       if (!ctx.payments) {
@@ -196,7 +196,7 @@ export function paymentsWebhookRouter(ctx: AppContext): Router {
       const headers = Object.fromEntries(
         Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]),
       ) as Record<string, string | undefined>;
-      const event = ctx.payments.verifyWebhook(raw, headers);
+      const event = await ctx.payments.verifyWebhook(raw, headers);
       if (!event) {
         res.status(401).json({ error: { code: 'INVALID_SIGNATURE', message: 'Invalid signature', requestId: String(req.id) } });
         return;

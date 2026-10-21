@@ -408,6 +408,8 @@ node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"</pre><b
         <li><strong>The webhook comes later</strong> (section 18), once the API has an address. You will use the secret you generated in section 3.</li>
         <li>To take real money later, complete Razorpay's business verification, switch to live mode, generate live keys and replace the three values.</li>
       </ol>
+      <div class="note info"><span class="t">Prefer Stripe? It works as an alternative</span>
+        <p>Set <code>PAYMENTS_PROVIDER=stripe</code> instead of the Razorpay values, and add <code>STRIPE_SECRET_KEY</code> (the <code>sk_test_…</code> key) and <code>STRIPE_WEBHOOK_SECRET</code>. Members pay on Stripe's own page, so the browser needs no Stripe key. In Stripe, open <em>Developers</em>, then <em>Webhooks</em>, add the endpoint <code>https://your-api.onrender.com/api/v1/webhooks/stripe</code> with the events <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code>, <code>checkout.session.async_payment_failed</code>, <code>invoice.paid</code>, <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code> and <code>charge.refunded</code>, then copy its signing secret (<code>whsec_…</code>). Switch on the <em>Customer portal</em> (Settings, then Billing) so members can update their card. In test mode pay with card <code>4242 4242 4242 4242</code>, any future date and any 3 digits.</p></div>
     </section>
 
     <!-- ============================================================ 9 -->

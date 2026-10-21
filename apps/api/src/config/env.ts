@@ -108,7 +108,12 @@ const envSchema = z.object({
   ASTROLOGY_PROVIDER: z.enum(['none', 'mock', 'rest']).default('mock'),
   ASTROLOGY_BASE_URL: z.string().url().optional(),
   ASTROLOGY_API_KEY: z.string().optional(),
-  PAYMENTS_PROVIDER: z.enum(['none', 'mock', 'razorpay']).default('mock'),
+  PAYMENTS_PROVIDER: z.enum(['none', 'mock', 'razorpay', 'stripe']).default('mock'),
+  /** Stripe (an alternative to Razorpay). The secret key stays on the server; members pay on Stripe's hosted Checkout page. */
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  /** The signing secret (whsec_...) of the webhook endpoint you add in the Stripe dashboard. */
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().min(8).default('dev-only-razorpay-webhook-secret'),
@@ -207,6 +212,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (env.KYC_PROVIDER === 'mock') problems.push('KYC_PROVIDER=mock is not allowed');
     if (env.KYC_PROVIDER !== 'none' && env.KYC_WEBHOOK_SECRET.startsWith('dev-only')) problems.push('KYC_WEBHOOK_SECRET is the development secret');
     if (env.PAYMENTS_PROVIDER === 'none') problems.push('PAYMENTS_PROVIDER=none: members could not pay');
+    if (env.PAYMENTS_PROVIDER === 'stripe' && !(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET)) problems.push('STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are required for Stripe');
     // REDIS_URL is optional: without it rate limits are kept per API instance and the worker runs events in its own process (see server.ts).
     if (!env.APP_URL.startsWith('https://') || !env.ADMIN_URL.startsWith('https://')) problems.push('APP_URL and ADMIN_URL must be https');
     if (env.CORS_ORIGINS.some((o) => !o.startsWith('https://'))) problems.push('CORS_ORIGINS must all be https');

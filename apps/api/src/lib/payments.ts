@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Env } from '../config/env';
 import { AppError } from './errors';
+import { StripeProvider } from './stripe';
 
 export interface ProviderSubscription {
   id: string;
@@ -30,9 +31,10 @@ export interface WebhookEvent {
 }
 
 export interface PaymentProvider {
-  readonly name: 'mock' | 'razorpay';
+  readonly name: 'mock' | 'razorpay' | 'stripe';
   readonly keyId: string;
-  createOrder(i: { amountPaise: number; receipt: string; notes: Record<string, string> }): Promise<{ id: string }>;
+  /** `checkoutUrl` is set by gateways that take the member to a hosted payment page (Stripe) instead of opening a widget. */
+  createOrder(i: { amountPaise: number; receipt: string; notes: Record<string, string>; description?: string }): Promise<{ id: string; checkoutUrl?: string }>;
   createPlan(i: { name: string; amountPaise: number; interval: 'monthly' | 'quarterly' | 'annual' }): Promise<{ id: string }>;
   createSubscription(i: {
     planId: string;
@@ -49,7 +51,7 @@ export interface PaymentProvider {
   fetchOrderPayments(orderId: string): Promise<ProviderPayment[]>;
   refund(paymentId: string, amountPaise: number): Promise<{ id: string; status: string }>;
   /** Webhook: valid signature gives the parsed event, otherwise null. */
-  verifyWebhook(raw: Buffer, headers: Record<string, string | undefined>): WebhookEvent | null;
+  verifyWebhook(raw: Buffer, headers: Record<string, string | undefined>): WebhookEvent | null | Promise<WebhookEvent | null>;
   /** Checkout callback signature. Only used to show "confirming"; never to grant anything. */
   verifyCheckout(i: { orderId?: string; subscriptionId?: string; paymentId: string; signature: string }): boolean;
 }
@@ -323,6 +325,9 @@ export function createPaymentProvider(env: Env): PaymentProvider | null {
   if (env.PAYMENTS_PROVIDER === 'mock') return new MockPaymentProvider(env.RAZORPAY_WEBHOOK_SECRET);
   if (env.PAYMENTS_PROVIDER === 'razorpay' && env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) {
     return new RazorpayProvider(env.RAZORPAY_KEY_ID, env.RAZORPAY_KEY_SECRET, env.RAZORPAY_WEBHOOK_SECRET);
+  }
+  if (env.PAYMENTS_PROVIDER === 'stripe' && env.STRIPE_SECRET_KEY) {
+    return new StripeProvider(env.STRIPE_SECRET_KEY, env.STRIPE_PUBLISHABLE_KEY ?? '', env.STRIPE_WEBHOOK_SECRET ?? '', env.APP_URL);
   }
   return null;
 }

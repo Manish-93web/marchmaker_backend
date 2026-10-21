@@ -76,14 +76,17 @@ async function providerPlanId(provider: PaymentProvider, entry: CatalogEntry, in
   const amount = entry.prices[interval];
   if (!amount) throw badRequest('That billing period is not offered for this plan');
   const row = await Plan.findOne({ code: entry.code }).lean();
-  const known = (row?.razorpayPlanIds as Record<string, { id: string; amount: number } | undefined> | undefined)?.[interval];
-  if (known && typeof known === 'object' && known.amount === amount) return known.id;
+  const known = (row?.razorpayPlanIds as Record<string, { id: string; amount: number; provider?: string } | undefined> | undefined)?.[interval];
+  // A plan id belongs to the gateway that created it. One saved before this was recorded came from Razorpay or the mock;
+  // it is never reused with Stripe, or with any other gateway than the one named.
+  const sameGateway = known?.provider ? known.provider === provider.name : provider.name !== 'stripe';
+  if (known && typeof known === 'object' && known.amount === amount && sameGateway) return known.id;
   const created = await provider.createPlan({ name: `${entry.name} (${interval})`, amountPaise: amount, interval });
   const seed = [...DEFAULT_PLANS, ...DEFAULT_PACKS].find((p) => p.code === entry.code);
   await Plan.updateOne(
     { code: entry.code },
     {
-      $set: { [`razorpayPlanIds.${interval}`]: { id: created.id, amount } },
+      $set: { [`razorpayPlanIds.${interval}`]: { id: created.id, amount, provider: provider.name } },
       $setOnInsert: {
         kind: entry.kind,
         name: entry.name,
@@ -144,7 +147,14 @@ export async function startSubscription(
     shortUrl: sub.shortUrl,
     couponCode: input.couponCode,
   });
-  return { kind: 'subscription' as const, keyId: provider.keyId, subscriptionId: sub.id, shortUrl: sub.shortUrl ?? null };
+  return {
+    kind: 'subscription' as const,
+    keyId: provider.keyId,
+    subscriptionId: sub.id,
+    shortUrl: sub.shortUrl ?? null,
+    // Stripe sends the member to its hosted page; the other gateways open their widget in the browser.
+    ...(provider.name === 'stripe' && sub.shortUrl ? { checkoutUrl: sub.shortUrl } : {}),
+  };
 }
 
 export async function startPackOrder(
@@ -212,7 +222,7 @@ export async function startPackOrder(
     }
 
     const receipt = `pk_${userId.slice(-8)}_${Date.now().toString(36)}`;
-    const po = await provider.createOrder({ amountPaise: split.cashPaise, receipt, notes: { userId, packCode: input.packCode } });
+    const po = await provider.createOrder({ amountPaise: split.cashPaise, receipt, notes: { userId, packCode: input.packCode }, description: `${pack.credits} introduction credit${pack.credits > 1 ? 's' : ''}` });
     await withTransaction(async (session) => {
       await Order.create([{ ...common, razorpayOrderId: po.id, receipt }], { session });
       if (split.walletPaise > 0) await wallet.spend(userId, split.walletPaise, orderId, session);
@@ -222,6 +232,7 @@ export async function startPackOrder(
       paid: false,
       keyId: provider.keyId,
       orderId: po.id,
+      ...(po.checkoutUrl ? { checkoutUrl: po.checkoutUrl } : {}),
       amountPaise: split.cashPaise,
       walletPaise: split.walletPaise,
       listPricePaise: list,
