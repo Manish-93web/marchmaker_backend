@@ -338,6 +338,8 @@ node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"</pre><b
     <section id="storage">
       <h2 class="sec">5. Cloudflare R2 storage <span class="tag">Accounts</span></h2>
       <p class="sec-sub">Three private buckets hold photos, ID images, and documents such as exports and invoices. You can use Amazon S3 instead. See the note at the end.</p>
+      <div class="note info"><span class="t">No storage account yet? Keep pictures in MongoDB</span>
+        <p>For a trial or a small site you can skip this whole section. In the Render group set <code>STORAGE_PROVIDER=mongo</code> and <code>PUBLIC_API_URL=https://your-api.onrender.com</code> (your real API address), and leave out every <code>S3_*</code> value. Photos, ID images, invoices and data exports are then saved inside your MongoDB database, and every image shows. The database grows with each picture (the free Atlas plan holds 512 MB), so move to R2 or S3 before you have many members. Files uploaded from your own computer can be copied across with <code>pnpm --filter @marchmaker/api storage:copy-local -- --to=mongo</code>.</p></div>
       <ol class="steps">
         <li>Sign in to <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a>, open <strong>R2 Object Storage</strong> and enable it.</li>
         <li><strong>Create three buckets</strong> with these exact names, a location hint of Asia-Pacific, and the default private setting. Never turn on public access.
@@ -485,7 +487,7 @@ node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"</pre><b
           <tr><td><code>MSG91_AUTH_KEY</code></td><td>From section 7</td></tr>
           <tr><td><code>MSG91_OTP_TEMPLATE_ID</code></td><td>From section 7</td></tr>
           <tr><td><code>OTP_CHANNEL</code></td><td><code>sms</code></td></tr>
-          <tr><td><code>STORAGE_PROVIDER</code></td><td><code>s3</code></td></tr>
+          <tr><td><code>STORAGE_PROVIDER</code></td><td><code>s3</code>, or <code>mongo</code> if you have no storage account yet (then also set <code>PUBLIC_API_URL</code> to your API address and skip the <code>S3_*</code> rows)</td></tr>
           <tr><td><code>S3_ENDPOINT</code></td><td>From section 5 (the R2 address)</td></tr>
           <tr><td><code>S3_REGION</code></td><td><code>auto</code></td></tr>
           <tr><td><code>S3_ACCESS_KEY_ID</code> and <code>S3_SECRET_ACCESS_KEY</code></td><td>The general key pair from section 5</td></tr>

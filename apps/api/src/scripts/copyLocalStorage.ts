@@ -3,16 +3,21 @@ import 'dotenv/config';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { loadEnv } from '../config/env';
-import { S3Storage, type Bucket } from '../lib/storage';
+import { connectMongo, disconnectMongo } from '../db/connection';
+import { createLogger } from '../lib/logger';
+import { MongoStorage, S3Storage, type Bucket, type ObjectStorage } from '../lib/storage';
 
 /**
- * Copies files saved by the local development storage (STORAGE_PROVIDER=local) into the S3-compatible buckets, keeping
- * every key the same, so photos and ID images uploaded on a development machine open on a deployed site.
+ * Copies files saved by the local development storage (STORAGE_PROVIDER=local) into the deployed storage, keeping every
+ * key the same, so photos and ID images uploaded on a development machine open on a deployed site.
  *
- *   LOCAL_STORAGE_DIR=<folder> S3_ENDPOINT=... S3_ACCESS_KEY_ID=... S3_SECRET_ACCESS_KEY=... \
- *   S3_IDENTITY_ACCESS_KEY_ID=... S3_IDENTITY_SECRET_ACCESS_KEY=... pnpm --filter @marchmaker/api storage:copy-local [--dry-run]
+ * To the database (STORAGE_PROVIDER=mongo on the server):
+ *   set MONGODB_URI, then: pnpm --filter @marchmaker/api storage:copy-local -- --to=mongo [--dry-run]
+ * To S3-compatible buckets:
+ *   set S3_ENDPOINT, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_IDENTITY_ACCESS_KEY_ID and S3_IDENTITY_SECRET_ACCESS_KEY,
+ *   then: pnpm --filter @marchmaker/api storage:copy-local [--dry-run]
  *
- * Safe to run again: an existing object is overwritten with the same content. It never deletes anything.
+ * Safe to run again: an existing object is replaced with the same content. It never deletes anything it did not write.
  */
 const BUCKETS: Bucket[] = ['photos', 'identity', 'documents'];
 const TYPES: Record<string, string> = { '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.pdf': 'application/pdf', '.zip': 'application/zip' };
@@ -33,12 +38,21 @@ async function* walk(dir: string, base = dir): AsyncGenerator<string> {
 
 async function main() {
   const dry = process.argv.includes('--dry-run');
-  const env = loadEnv({ ...process.env, STORAGE_PROVIDER: 's3' } as NodeJS.ProcessEnv);
-  if (!env.S3_ENDPOINT || !env.S3_ACCESS_KEY_ID || env.S3_ACCESS_KEY_ID === 'minioadmin') {
-    throw new Error('Set S3_ENDPOINT and the real S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY (and the S3_IDENTITY_* pair) for the destination.');
+  const toMongo = process.argv.includes('--to=mongo');
+  const env = loadEnv({ ...process.env, STORAGE_PROVIDER: toMongo ? 'mongo' : 's3' } as NodeJS.ProcessEnv);
+  if (!toMongo && (!env.S3_ENDPOINT || !env.S3_ACCESS_KEY_ID || env.S3_ACCESS_KEY_ID === 'minioadmin')) {
+    throw new Error('Set S3_ENDPOINT and the real S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY (and the S3_IDENTITY_* pair) for the destination, or use --to=mongo.');
   }
   const root = path.resolve(env.LOCAL_STORAGE_DIR);
-  const store = new S3Storage(env);
+  let store: ObjectStorage;
+  if (toMongo) {
+    if (!dry) await connectMongo(env.MONGODB_URI, createLogger('error'));
+    store = new MongoStorage(env.JWT_REFRESH_SECRET);
+    console.log(`Destination: the MongoDB database${dry ? ' (dry run, nothing is written)' : ''}`);
+  } else {
+    store = new S3Storage(env);
+  }
+
   let copied = 0;
   let failed = 0;
   for (const bucket of BUCKETS) {
@@ -61,6 +75,7 @@ async function main() {
     }
   }
   console.log(`${dry ? 'Would copy' : 'Copied'} ${copied} file(s) from ${root}${failed ? `; ${failed} failed` : ''}.`);
+  if (toMongo && !dry) await disconnectMongo();
   if (failed) process.exitCode = 1;
 }
 

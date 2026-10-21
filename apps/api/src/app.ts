@@ -8,7 +8,7 @@ import { requestId } from './middleware/requestId';
 import { globalRateLimiter, securityMiddleware } from './middleware/security';
 import { healthRouter } from './routes/health';
 import { v1Router } from './routes/v1';
-import { devStorageRouter } from './routes/devStorage';
+import { signedStorageRouter } from './routes/devStorage';
 import { docsRouter } from './openapi';
 import { kycWebhookRouter } from './routes/verification';
 import { paymentsWebhookRouter } from './routes/billing';
@@ -55,8 +55,8 @@ export function createApp({ env, log, isReady, ctx: given }: AppDeps): Express {
   app.use(`${API_PREFIX}/webhooks`, paymentsWebhookRouter(ctx));
   app.use(`${API_PREFIX}/webhooks`, callsWebhookRouter(ctx));
   app.use(`${API_PREFIX}/webhooks`, messagingWebhooksRouter(ctx));
-  const devStorage = devStorageRouter(ctx);
-  if (devStorage) app.use(API_PREFIX, devStorage);
+  const signedStorage = signedStorageRouter(ctx);
+  if (signedStorage) app.use(API_PREFIX, signedStorage);
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 

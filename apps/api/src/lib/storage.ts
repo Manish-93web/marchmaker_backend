@@ -7,6 +7,9 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import mongoose from 'mongoose';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Env } from '../config/env';
@@ -145,22 +148,17 @@ export class S3Storage implements ObjectStorage {
 }
 
 /**
- * Files on this machine's disk, for development. Uploads and downloads go through the API itself (signed, short-lived
- * links under /api/v1/dev-storage), so the browser flow for photos and ID images works without an S3 account, and the
- * files survive a restart. Never used in production (the start-up guard refuses it).
+ * Storage whose uploads and downloads go through the API itself, using short-lived signed links. Each link names the
+ * exact content type and size it allows, like a presigned S3 link. Subclasses decide where the bytes are kept.
  */
-export class LocalStorage implements ObjectStorage {
-  constructor(
-    private readonly dir: string,
+export abstract class SignedUrlStorage implements ObjectStorage {
+  /** `basePath` is where the API serves the links, under /api/v1. `publicBase` is the API's own address, used for uploads so they go straight to it. */
+  protected constructor(
     private readonly secret: string,
+    readonly basePath: string,
+    private readonly publicBase = '',
   ) {}
 
-  private file(b: Bucket, key: string) {
-    const root = path.resolve(this.dir, b);
-    const full = path.resolve(root, key);
-    if (!full.startsWith(root + path.sep)) throw new Error('invalid object key');
-    return full;
-  }
   sign(method: 'PUT' | 'GET', b: Bucket, key: string, exp: number, ct = '', len = 0) {
     return createHmac('sha256', this.secret).update(`${method}:${b}/${key}:${exp}:${ct}:${len}`).digest('hex');
   }
@@ -174,12 +172,37 @@ export class LocalStorage implements ObjectStorage {
   async presignPut(b: Bucket, key: string, contentType: string, sizeBytes: number, ttlSec: number) {
     const exp = Date.now() + ttlSec * 1000;
     const sig = this.sign('PUT', b, key, exp, contentType, sizeBytes);
-    const url = `/api/v1/dev-storage/${b}/${key}?exp=${exp}&sig=${sig}&ct=${encodeURIComponent(contentType)}&len=${sizeBytes}`;
+    // Uploads can be large, so they may go to the API's own address instead of through the site's proxy.
+    const url = `${this.publicBase}/api/v1/${this.basePath}/${b}/${key}?exp=${exp}&sig=${sig}&ct=${encodeURIComponent(contentType)}&len=${sizeBytes}`;
     return { url, method: 'PUT' as const, headers: { 'Content-Type': contentType }, expiresInSec: ttlSec };
   }
+  /** Relative on purpose: pictures are loaded from the site's own address, so they are not blocked as cross-site. */
   async presignGet(b: Bucket, key: string, ttlSec: number) {
     const exp = Date.now() + ttlSec * 1000;
-    return `/api/v1/dev-storage/${b}/${key}?exp=${exp}&sig=${this.sign('GET', b, key, exp)}`;
+    return `/api/v1/${this.basePath}/${b}/${key}?exp=${exp}&sig=${this.sign('GET', b, key, exp)}`;
+  }
+  abstract head(b: Bucket, key: string): Promise<{ size: number; contentType?: string } | null>;
+  abstract get(b: Bucket, key: string): Promise<Buffer>;
+  abstract put(b: Bucket, key: string, body: Buffer, contentType: string): Promise<void>;
+  abstract delete(b: Bucket, key: string): Promise<void>;
+}
+
+/**
+ * Files on this machine's disk, for development. Never used in production (the start-up guard refuses it).
+ */
+export class LocalStorage extends SignedUrlStorage {
+  constructor(
+    private readonly dir: string,
+    secret: string,
+  ) {
+    super(secret, 'dev-storage');
+  }
+
+  private file(b: Bucket, key: string) {
+    const root = path.resolve(this.dir, b);
+    const full = path.resolve(root, key);
+    if (!full.startsWith(root + path.sep)) throw new Error('invalid object key');
+    return full;
   }
   async head(b: Bucket, key: string) {
     try {
@@ -207,7 +230,47 @@ export class LocalStorage implements ObjectStorage {
   }
 }
 
+/**
+ * Files kept in the MongoDB database itself (GridFS), one collection set per bucket. It needs no object store account,
+ * and the API and the worker both see the same files, so photos, ID images, invoices and exports work on a small
+ * deployment. The database grows with every picture, so move to S3 storage before the numbers get large.
+ */
+export class MongoStorage extends SignedUrlStorage {
+  constructor(secret: string, publicBase?: string) {
+    super(secret, 'files', publicBase?.replace(/\/$/, ''));
+  }
+
+  private bucket(b: Bucket) {
+    const db = mongoose.connection.db;
+    if (!db) throw new Error('MongoDB is not connected');
+    return new mongoose.mongo.GridFSBucket(db, { bucketName: `files_${b}` });
+  }
+  private async find(b: Bucket, key: string) {
+    const files = await this.bucket(b).find({ filename: key }).sort({ uploadDate: -1 }).limit(1).toArray();
+    return files[0] ?? null;
+  }
+  async head(b: Bucket, key: string) {
+    const f = await this.find(b, key);
+    return f ? { size: f.length, contentType: (f.metadata as { contentType?: string } | undefined)?.contentType } : null;
+  }
+  async get(b: Bucket, key: string) {
+    if (!(await this.find(b, key))) throw new Error('object not found');
+    const chunks: Buffer[] = [];
+    for await (const c of this.bucket(b).openDownloadStreamByName(key)) chunks.push(c as Buffer);
+    return Buffer.concat(chunks);
+  }
+  async put(b: Bucket, key: string, body: Buffer, contentType: string) {
+    await this.delete(b, key); // one current version per key, like an object store
+    await pipeline(Readable.from(body), this.bucket(b).openUploadStream(key, { metadata: { contentType } }));
+  }
+  async delete(b: Bucket, key: string) {
+    const bucket = this.bucket(b);
+    for (const f of await bucket.find({ filename: key }).toArray()) await bucket.delete(f._id);
+  }
+}
+
 export function createStorage(env: Env): ObjectStorage {
   if (env.STORAGE_PROVIDER === 'local') return new LocalStorage(env.LOCAL_STORAGE_DIR, env.JWT_REFRESH_SECRET);
+  if (env.STORAGE_PROVIDER === 'mongo') return new MongoStorage(env.JWT_REFRESH_SECRET, env.PUBLIC_API_URL);
   return env.STORAGE_PROVIDER === 's3' ? new S3Storage(env) : new MemoryStorage();
 }

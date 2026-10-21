@@ -52,7 +52,9 @@ const envSchema = z.object({
 
   /** OAuth client id for Sign in with Google (Google Cloud console). Unset hides the button. */
   GOOGLE_CLIENT_ID: z.string().trim().min(10).optional(),
-  STORAGE_PROVIDER: z.enum(['memory', 'local', 's3']).default('memory'),
+  STORAGE_PROVIDER: z.enum(['memory', 'local', 'mongo', 's3']).default('memory'),
+  /** This API's own public address (for example https://marchmaker-api.onrender.com). With STORAGE_PROVIDER=mongo, uploads go straight to it instead of through the site's proxy. */
+  PUBLIC_API_URL: z.string().url().optional(),
   /** Where the local development storage keeps files. The API and the worker both run from their own folder under apps/, so this default lands in one shared place at the repo root. */
   LOCAL_STORAGE_DIR: z.string().default('../../.data/storage'),
   S3_ENDPOINT: z.string().optional(),
@@ -201,7 +203,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (env.WHATSAPP_PROVIDER === 'meta' && !(env.WHATSAPP_VERIFY_TOKEN && env.WHATSAPP_APP_SECRET)) problems.push('WHATSAPP_VERIFY_TOKEN and WHATSAPP_APP_SECRET are required for WhatsApp webhooks');
     if (env.SMS_PROVIDER === 'mock') problems.push('SMS_PROVIDER=mock would never send OTP codes');
     if (env.SMS_PROVIDER === 'msg91' && !(env.MSG91_AUTH_KEY && env.MSG91_OTP_TEMPLATE_ID)) problems.push('MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID are required');
-    if (env.STORAGE_PROVIDER !== 's3') problems.push('STORAGE_PROVIDER must be s3: memory would lose every upload, and local is for development only');
+    if (env.STORAGE_PROVIDER !== 's3' && env.STORAGE_PROVIDER !== 'mongo') problems.push('STORAGE_PROVIDER must be s3 (or mongo for a small deployment): memory would lose every upload, and local is for development only');
     if (env.KYC_PROVIDER === 'mock') problems.push('KYC_PROVIDER=mock is not allowed');
     if (env.KYC_PROVIDER !== 'none' && env.KYC_WEBHOOK_SECRET.startsWith('dev-only')) problems.push('KYC_WEBHOOK_SECRET is the development secret');
     if (env.PAYMENTS_PROVIDER === 'none') problems.push('PAYMENTS_PROVIDER=none: members could not pay');
