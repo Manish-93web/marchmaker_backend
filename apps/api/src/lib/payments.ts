@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Env } from '../config/env';
+import { AppError } from './errors';
 
 export interface ProviderSubscription {
   id: string;
@@ -223,7 +224,15 @@ export class RazorpayProvider implements PaymentProvider {
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(10_000),
     });
-    if (!res.ok) throw new Error(`razorpay ${method} ${path} returned ${res.status}`);
+    if (!res.ok) {
+      // 401 means the key id or secret is wrong; 400 usually means an id we sent is unknown to this Razorpay account.
+      // The member sees a plain message; the status is kept for whoever reads the logs and the response.
+      throw new AppError(502, 'PAYMENT_PROVIDER_ERROR', 'We could not complete that with our payment provider. Please try again in a moment.', {
+        provider: 'razorpay',
+        status: res.status,
+        request: `${method} ${path}`,
+      });
+    }
     return (await res.json()) as T;
   }
 
