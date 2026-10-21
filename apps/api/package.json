@@ -17,6 +17,7 @@
     "migrate:down": "migrate-mongo down -f migrate-mongo-config.cjs",
     "migrate:status": "migrate-mongo status -f migrate-mongo-config.cjs",
     "sync-indexes": "tsx src/scripts/syncIndexes.ts",
+    "storage:copy-local": "tsx src/scripts/copyLocalStorage.ts",
     "rotate-field-key": "tsx src/scripts/rotateFieldKey.ts",
     "docs:notifications": "tsx src/scripts/notificationMatrix.ts"
   },
