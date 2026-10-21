@@ -16,11 +16,17 @@ const VARIANTS = [
  * moderation adapter, then deletes the raw upload. The photo then waits for human approval.
  */
 export async function processPhoto(ctx: AppContext, photoId: string): Promise<void> {
+  // Claim the photo so that the worker, the API's own recovery pass and a retry never resize the same one at once.
+  // A claim older than five minutes is treated as abandoned (the process that took it stopped).
   const photo = await Photo.findOneAndUpdate(
-    { _id: photoId, status: 'processing' },
-    { $set: { status: 'processing' } },
+    {
+      _id: photoId,
+      status: 'processing',
+      $or: [{ processingStartedAt: { $exists: false } }, { processingStartedAt: null }, { processingStartedAt: { $lt: new Date(Date.now() - 5 * 60_000) } }],
+    },
+    { $set: { processingStartedAt: new Date() } },
   );
-  if (!photo) return; // already processed, or deleted meanwhile
+  if (!photo) return; // already processed, being processed, or deleted meanwhile
 
   const userId = String(photo.userId);
   try {
@@ -88,4 +94,26 @@ export async function processPhoto(ctx: AppContext, photoId: string): Promise<vo
     await Photo.updateOne({ _id: photoId }, { $set: { status: 'failed', rejectionReason: 'processing_error' } });
     throw err;
   }
+}
+
+/**
+ * Processes photos that have waited too long in "processing". This is the safety net for deployments without a job
+ * queue: the API runs it on a timer, so a photo never stays stuck if the worker is slow, down or not running.
+ */
+export async function processStuckPhotos(ctx: AppContext, olderThanMs = 90_000, limit = 5): Promise<number> {
+  const stuck = await Photo.find({ status: 'processing', updatedAt: { $lt: new Date(Date.now() - olderThanMs) } })
+    .sort({ updatedAt: 1 })
+    .limit(limit)
+    .select('_id')
+    .lean();
+  let done = 0;
+  for (const p of stuck) {
+    try {
+      await processPhoto(ctx, String(p._id));
+      done++;
+    } catch (err) {
+      ctx.log.warn({ err, photoId: String(p._id) }, 'stuck photo could not be processed');
+    }
+  }
+  return done;
 }

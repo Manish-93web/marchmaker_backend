@@ -54,6 +54,12 @@ export async function confirmUpload(ctx: AppContext, userId: string, id: string)
     { returnDocument: 'after' },
   );
   if (claimed) await emit('photo.uploaded', { photoId: id, userId });
+  // Without a job queue (no REDIS_URL) nothing else would pick this up, so the API resizes it itself, right after replying.
+  if (claimed && ctx.env.NODE_ENV !== 'test' && !ctx.env.REDIS_URL) {
+    void import('../jobs/photoJobs')
+      .then((m) => m.processPhoto(ctx, id))
+      .catch((err) => ctx.log.warn({ err, photoId: id }, 'inline photo processing failed'));
+  }
   return { id, status: 'processing' as const };
 }
 

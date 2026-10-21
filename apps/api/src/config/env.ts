@@ -207,7 +207,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (env.KYC_PROVIDER === 'mock') problems.push('KYC_PROVIDER=mock is not allowed');
     if (env.KYC_PROVIDER !== 'none' && env.KYC_WEBHOOK_SECRET.startsWith('dev-only')) problems.push('KYC_WEBHOOK_SECRET is the development secret');
     if (env.PAYMENTS_PROVIDER === 'none') problems.push('PAYMENTS_PROVIDER=none: members could not pay');
-    if (!env.REDIS_URL) problems.push('REDIS_URL is required (shared rate limits and the job queue)');
+    // REDIS_URL is optional: without it rate limits are kept per API instance and the worker runs events in its own process (see server.ts).
     if (!env.APP_URL.startsWith('https://') || !env.ADMIN_URL.startsWith('https://')) problems.push('APP_URL and ADMIN_URL must be https');
     if (env.CORS_ORIGINS.some((o) => !o.startsWith('https://'))) problems.push('CORS_ORIGINS must all be https');
     if (env.FIELD_ENCRYPTION_KEY_VERSION > 1 && !env.FIELD_ENCRYPTION_KEYS_PREVIOUS) problems.push('FIELD_ENCRYPTION_KEYS_PREVIOUS must list the earlier keys when the key version is above 1');

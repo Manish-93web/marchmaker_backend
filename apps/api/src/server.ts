@@ -5,6 +5,7 @@ import { buildContext } from './context';
 import { createMailer } from './lib/mailer';
 import { createSms } from './lib/sms';
 import { loadEnv, staffMfaBypass } from './config/env';
+import { processStuckPhotos } from './jobs/photoJobs';
 import { resolveKmsKeys } from './lib/keys';
 import { captureError, initSentry, flushSentry } from './lib/sentry';
 import { connectMongo, disconnectMongo, isMongoReady } from './db/connection';
@@ -24,6 +25,10 @@ async function main() {
     );
   }
 
+  if (env.NODE_ENV === 'production' && !env.REDIS_URL) {
+    log.warn('REDIS_URL is not set: rate limits are per API instance, photos are processed by the API itself, and the worker runs jobs in its own process without retries. Fine for one instance; add Redis before scaling out.');
+  }
+
   let shuttingDown = false;
   await connectMongo(env.MONGODB_URI, log);
 
@@ -33,9 +38,18 @@ async function main() {
   server.keepAliveTimeout = 65_000;
   server.listen(env.PORT, () => log.info({ port: env.PORT }, 'api listening'));
 
+  // No job queue: the API also looks for photos left in "processing" and finishes them, so none stays stuck.
+  const photoSweep = !env.REDIS_URL
+    ? setInterval(() => {
+        processStuckPhotos(ctx).catch((err) => log.warn({ err }, 'photo recovery pass failed'));
+      }, 60_000)
+    : undefined;
+  photoSweep?.unref();
+
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
+    if (photoSweep) clearInterval(photoSweep);
     log.info({ signal }, 'shutting down');
     const force = setTimeout(() => process.exit(1), 15_000);
     force.unref();

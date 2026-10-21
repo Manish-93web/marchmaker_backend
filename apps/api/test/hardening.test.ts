@@ -306,13 +306,19 @@ describe('production configuration guard', () => {
     expect(() => loadEnv(good)).not.toThrow();
   });
 
+  it('accepts a setup without Redis (one API instance, in-process jobs)', () => {
+    expect(() => loadEnv({ ...good, REDIS_URL: '' } as unknown as NodeJS.ProcessEnv)).not.toThrow();
+    const withoutRedis = { ...good } as unknown as Record<string, string>;
+    delete withoutRedis.REDIS_URL;
+    expect(() => loadEnv(withoutRedis as unknown as NodeJS.ProcessEnv)).not.toThrow();
+  });
+
   it.each([
     ['the development encryption key', { FIELD_ENCRYPTION_KEY: 'ZGV2LW9ubHktZmllbGQtZW5jcnlwdGlvbi1rZXktMzI=' }, /development key/],
     ['mock email', { EMAIL_PROVIDER: 'mock' }, /never send email/],
     ['mock SMS', { SMS_PROVIDER: 'mock' }, /OTP/],
     ['in-memory storage', { STORAGE_PROVIDER: 'memory' }, /lose every upload/],
     ['a mock KYC provider', { KYC_PROVIDER: 'mock' }, /KYC_PROVIDER=mock/],
-    ['no Redis', { REDIS_URL: '' }, /REDIS_URL/],
     ['an http origin', { CORS_ORIGINS: 'http://app.example.com' }, /https/],
     ['an http app url', { APP_URL: 'http://app.example.com' }, /https/],
     ['insecure cookies', { COOKIE_SECURE: 'false' }, /COOKIE_SECURE/],

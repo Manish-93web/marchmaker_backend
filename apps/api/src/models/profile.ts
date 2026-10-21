@@ -57,6 +57,8 @@ const photoSchema = new Schema(
     },
     contentType: String,
     sizeBytes: Number,
+    /** When a process took this photo to resize it. Stops two of them working on one photo; an old claim counts as abandoned. */
+    processingStartedAt: Date,
     width: Number,
     height: Number,
     isPrimary: { type: Boolean, default: false },

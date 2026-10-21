@@ -10,7 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
 import { loadEnv } from '../src/config/env';
 import { buildContext } from '../src/context';
-import { processPhoto } from '../src/jobs/photoJobs';
+import { processPhoto, processStuckPhotos } from '../src/jobs/photoJobs';
 import { buildExport, purgeDueAccounts } from '../src/jobs/accountJobs';
 import { registerMemberDataHooks } from '../src/jobs/registerPurge';
 import { MemoryMailer } from '../src/lib/mailer';
@@ -123,6 +123,26 @@ async function uploadPhoto(t: T, m: M, img: Buffer) {
   await m.send('post', `/photos/${up.body.id}/confirm`).expect(200);
   return up.body.id as string;
 }
+
+describe('photo recovery without a job queue', () => {
+  it('finishes photos that were left in processing, only once they have waited a while, and never twice at once', async () => {
+    const t = setup();
+    const m = await member(t);
+    const id = await uploadPhoto(t, m, await jpeg({ seed: 3 }));
+    expect((await Photo.findById(id))?.status).toBe('processing');
+
+    expect(await processStuckPhotos(t.ctx, 60_000)).toBe(0); // too fresh: left to the worker
+    expect((await Photo.findById(id))?.status).toBe('processing');
+
+    // Two processes arrive together: only one may take the photo.
+    await Promise.all([processPhoto(t.ctx, id), processPhoto(t.ctx, id)]);
+    const done = await Photo.findById(id);
+    expect(done?.status).toBe('pending');
+    expect(done?.variants?.md).toBeTruthy();
+
+    expect(await processStuckPhotos(t.ctx, 0)).toBe(0); // nothing left to do
+  });
+});
 
 describe('profile autosave', () => {
   it('requires a version, validates fields, and increments the version on each save', async () => {
