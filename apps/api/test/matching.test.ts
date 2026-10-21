@@ -230,6 +230,19 @@ describe('matching run', () => {
     expect(JSON.stringify(intro)).not.toMatch(/score|signals|reasons/);
   });
 
+  it('releases an approved match once even when the API and the worker run the release step together', async () => {
+    const t = setup();
+    const mm = await staff(t, ['matchmaker'], 'mm@example.com');
+    const w = await matchable(t, 'Asha', { gender: 'woman', scores: { ambition: 0.8 } });
+    const m = await matchable(t, 'Ravi', { gender: 'man', scores: { ambition: 0.75 } });
+    const id = await openForReview(t, mm, w, m);
+    await mm.post(`/admin/matches/${id}/decision`).send({ decision: 'approve', whyText: WHY, confirmed: true }).expect(200);
+    await MatchSuggestion.updateOne({ _id: id }, { $set: { releaseAt: new Date(Date.now() - 1000) } });
+    const runs = await Promise.all([releaseDueMatches(t.ctx), releaseDueMatches(t.ctx), releaseDueMatches(t.ctx)]);
+    expect(runs.reduce((n, r) => n + r.released, 0)).toBe(1);
+    expect(await Introduction.countDocuments()).toBe(1);
+  });
+
   it('runs the nightly job at most once a day', async () => {
     const t = setup();
     await matchable(t, 'Asha', { gender: 'woman' });

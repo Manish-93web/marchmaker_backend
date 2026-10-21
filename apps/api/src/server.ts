@@ -6,6 +6,7 @@ import { createMailer } from './lib/mailer';
 import { createSms } from './lib/sms';
 import { loadEnv, staffMfaBypass } from './config/env';
 import { processStuckPhotos } from './jobs/photoJobs';
+import { releaseDueMatches } from './services/matchReview';
 import { resolveKmsKeys } from './lib/keys';
 import { captureError, initSentry, flushSentry } from './lib/sentry';
 import { connectMongo, disconnectMongo, isMongoReady } from './db/connection';
@@ -46,10 +47,19 @@ async function main() {
   }, 60_000);
   photoSweep.unref();
 
+  // Approved matches reach members once their undo window ends. The worker does this too; doing it here as well means a
+  // match is never left waiting because the worker is down. Releasing is safe to run twice: each pair can become an
+  // introduction only once.
+  const releaseTick = setInterval(() => {
+    releaseDueMatches(ctx).catch((err) => log.warn({ err }, 'match release pass failed'));
+  }, 60_000);
+  releaseTick.unref();
+
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
     clearInterval(photoSweep);
+    clearInterval(releaseTick);
     log.info({ signal }, 'shutting down');
     const force = setTimeout(() => process.exit(1), 15_000);
     force.unref();
