@@ -195,497 +195,234 @@ footer.end { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--li
     <details class="menu"><summary>Contents</summary><ol id="menu-list"></ol></details>
 
     <header class="top">
-      <p class="kicker">Tester guide</p>
-      <h1>Marchmaker Live Test Guide</h1>
-      <p class="lede">Marchmaker makes a small number of human-reviewed marriage introductions in India. This guide walks you through the whole journey on the live test site, from creating two members to a finished introduction and chat, with every step an admin must do in between.</p>
+      <p class="kicker">Step-by-step guide</p>
+      <h1>How to use Marchmaker</h1>
+      <p class="lede">Follow these steps to see the whole journey: two people sign up, an admin checks them, they are matched, and they start chatting.</p>
     </header>
 
-    <!-- ============================================================ overview -->
-    <section id="overview">
-      <h2 class="sec">Start here <span class="tag">Overview</span></h2>
-      <p class="sec-sub">You need nothing installed. Two web addresses and one admin login are enough.</p>
+    <!-- ============================================================ start -->
+    <section id="start">
+      <h2 class="sec">Start here <span class="tag">Logins</span></h2>
+      <p class="sec-sub">Two websites, one admin login. Members sign up themselves.</p>
 
       <div class="cards">
         <div class="card">
-          <h4>Member site</h4>
-          <div class="kv"><span class="k">URL</span><span class="v">https://marchmaker.vercel.app</span><button class="copy" data-copy="https://marchmaker.vercel.app">Copy</button></div>
-          <div class="kv"><span class="k">Use it for</span><span class="v" style="font-family:var(--font-body)">Sign-up, profile, matches, chat</span></div>
+          <h4>Member website</h4>
+          <div class="kv"><span class="k">Open</span><span class="v">https://marchmaker.vercel.app</span><button class="copy" data-copy="https://marchmaker.vercel.app">Copy</button></div>
+          <div class="kv"><span class="k">Login</span><span class="v" style="font-family:var(--font-body)">You create it in step 1</span></div>
         </div>
         <div class="card admin">
-          <h4>Admin console</h4>
-          <div class="kv"><span class="k">URL</span><span class="v">https://marchmakeradmin.vercel.app</span><button class="copy" data-copy="https://marchmakeradmin.vercel.app">Copy</button></div>
+          <h4>Admin website</h4>
+          <div class="kv"><span class="k">Open</span><span class="v">https://marchmakeradmin.vercel.app</span><button class="copy" data-copy="https://marchmakeradmin.vercel.app">Copy</button></div>
           <div class="kv"><span class="k">Email</span><span class="v">admin@example.com</span><button class="copy" data-copy="admin@example.com">Copy</button></div>
           <div class="kv"><span class="k">Password</span><span class="v">Admin@12345</span><button class="copy" data-copy="Admin@12345">Copy</button></div>
         </div>
       </div>
 
-      <h3>What the platform does</h3>
-      <ul>
-        <li><strong>Members</strong> register, fill a profile, upload photos, verify their ID and say what they are looking for.</li>
-        <li><strong>The admin team</strong> reviews every profile, photo and ID, and approves every match by hand.</li>
-        <li><strong>Introductions</strong> go to both people. Each says yes or no. A credit is spent only when <em>both</em> say yes, and then messaging opens.</li>
-        <li>There is no swiping and no browsing of other members.</li>
-      </ul>
-
-      <h3>The whole journey in one line</h3>
+      <h3>How it works in one line</h3>
       <ol class="flow" aria-label="Journey">
-        <li>Register</li><li class="sep">→</li>
-        <li>Confirm email</li><li class="sep">→</li>
-        <li>Fill profile + photos</li><li class="sep">→</li>
-        <li class="admin">Admin approves profile + photos</li><li class="sep">→</li>
-        <li>Upload ID + selfie</li><li class="sep">→</li>
-        <li class="admin">Admin approves ID</li><li class="sep">→</li>
-        <li>Set preferences</li><li class="sep">→</li>
-        <li class="admin">Admin runs matching and approves a match</li><li class="sep">→</li>
-        <li>Match is released</li><li class="sep">→</li>
-        <li>Choose a plan or credit (test payment)</li><li class="sep">→</li>
+        <li>Sign up</li><li class="sep">→</li>
+        <li>Fill profile</li><li class="sep">→</li>
+        <li class="admin">Admin approves</li><li class="sep">→</li>
+        <li>Verify ID</li><li class="sep">→</li>
+        <li class="admin">Admin approves</li><li class="sep">→</li>
+        <li class="admin">Admin makes a match</li><li class="sep">→</li>
         <li>Both say yes</li><li class="sep">→</li>
-        <li>Chat opens</li>
+        <li>Chat</li>
       </ol>
-      <p>Purple steps are done by an admin in the admin console. Everything else is done on the member site. To see a match through you need <strong>two members</strong>, one woman and one man. This guide calls them <em>Member one</em> and <em>Member two</em>.</p>
+      <p>Purple steps are done by the admin. The rest are done by members. You need <strong>two members</strong> (one woman, one man), so you will sign up twice.</p>
 
-      <h3>Read these first</h3>
-      <div class="note warn"><span class="t">This is a test site</span>
+      <div class="note info"><span class="t">Two tips before you begin</span>
         <ul>
-          <li>Use <strong>made-up details</strong>. Do not upload real ID documents or photos of real people. Use any sample image for an ID.</li>
-          <li>Payments run in <strong>Stripe test mode</strong>. No real money moves, and only Stripe's test card works (given in section 8).</li>
-          <li>The admin login is shared and has full power. Please <strong>do not change its password</strong> or delete other people's accounts.</li>
-        </ul>
-      </div>
-      <div class="note info"><span class="t">Keep your sign-ins apart</span>
-        <ul>
-          <li>Use a <strong>separate private (incognito) window</strong> for each member you sign in as. Two members in one normal window log each other out.</li>
-          <li>The admin console keeps its own sign-in, so you can stay signed in to it and to one member at the same time. Open it in its own tab or window.</li>
+          <li>Use a <strong>private (incognito) window</strong> for each member, and a different window for the admin. Otherwise the sign-ins mix up.</li>
+          <li>Use made-up details and any sample picture for photos and ID. This is a test site.</li>
         </ul>
       </div>
     </section>
 
     <!-- ============================================================ 1 -->
-    <section id="register">
-      <h2 class="sec">1. Member one: register <span class="tag">Part A</span></h2>
-      <p class="sec-sub">Open a <strong>private window</strong> and go to <code>https://marchmaker.vercel.app</code>. Member one will be a <strong>man</strong>.</p>
-
-      <h3>1.1 Create the account</h3>
+    <section id="signup">
+      <h2 class="sec">1. Sign up as Member one <span class="tag">Member</span></h2>
+      <p class="sec-sub">Open a private window and go to <code>https://marchmaker.vercel.app</code>. Member one will be a man.</p>
       <ol class="steps">
-        <li>Press <strong>Get started</strong> (or open <code>/register</code>).</li>
-        <li>Fill in the form. Use your own email address, because a confirmation email is sent to it.
+        <li>Press <strong>Get started</strong>.</li>
+        <li>Fill in the form:
           <div class="tw"><table>
-            <thead><tr><th>Field</th><th>Enter</th><th>Rule</th></tr></thead>
+            <thead><tr><th>Field</th><th>Enter</th></tr></thead>
             <tbody>
-              <tr><td>First name</td><td>Rohan</td><td>Required</td></tr>
-              <tr><td>I am</td><td>A man</td><td>Choose one</td></tr>
-              <tr><td>Date of birth</td><td>2 Feb 1996</td><td>Women 18 or older. Men and non-binary people 21 or older.</td></tr>
-              <tr><td>Email</td><td>An address you can open</td><td>Use a different address for each member. A plus address such as <code>you+rohan@gmail.com</code> reaches the same inbox.</td></tr>
-              <tr><td>Mobile number</td><td>Leave blank</td><td>Optional. Do not fill it in: phone codes by SMS may not be switched on for this test.</td></tr>
-              <tr><td>Password</td><td>Passw0rd-Test1</td><td>At least 10 characters with upper case, lower case and a number</td></tr>
-              <tr><td>Terms</td><td>Tick the box</td><td>Required</td></tr>
+              <tr><td>First name</td><td>Rohan</td></tr>
+              <tr><td>I am</td><td>A man</td></tr>
+              <tr><td>Date of birth</td><td>2 February 1996 (men must be 21 or older, women 18 or older)</td></tr>
+              <tr><td>Email</td><td>An email address you can open</td></tr>
+              <tr><td>Mobile number</td><td>Leave empty</td></tr>
+              <tr><td>Password</td><td>Passw0rd-Test1 (10 or more characters, with capital, small letter and number)</td></tr>
+              <tr><td>Terms</td><td>Tick the box</td></tr>
             </tbody>
           </table></div>
         </li>
         <li>Press <strong>Create account</strong>.
-          <span class="expect"><b>Result:</b> a “Check your inbox” message saying a confirmation link was sent. The site gives the same message even if the email already exists. That is on purpose, so nobody can find out who has an account.</span>
+          <span class="expect"><b>You will see:</b> “Check your inbox”.</span>
         </li>
-        <li><strong>Open your email,</strong> find the message “Confirm your email” and press the link. Look in spam if it is not in the inbox. The link works for 24 hours.
-          <span class="expect"><b>Result:</b> a page titled “Email confirmed” with a <strong>Continue</strong> button.</span>
+        <li>Open your email, find the message <strong>Confirm your email</strong> (look in spam if needed) and press the link.
+          <span class="expect"><b>You will see:</b> “Email confirmed”.</span>
         </li>
-      </ol>
-      <div class="note info"><span class="t">No email after 5 minutes?</span><p>Email delivery depends on how the owner set up the test site. Tell the owner your address and the time. In the meantime you can use <strong>Sign in with Google</strong> (section 1.3), which does not need the email.</p></div>
-
-      <h3>1.2 Sign in</h3>
-      <ol class="steps">
-        <li>Go to <code>/login</code>, enter the email and password, and press <strong>Sign in</strong>.
-          <span class="expect"><b>Result:</b> your <strong>Dashboard</strong> opens and says “Hello, Rohan”. The journey bar shows <strong>Account</strong> ticked and <strong>Profile</strong> as the current step.</span>
+        <li>Press <strong>Continue</strong>, or go to <code>/login</code> and sign in with your email and password.
+          <span class="expect"><b>You will see:</b> your Dashboard saying “Hello, Rohan”.</span>
         </li>
       </ol>
-      <p>If you sign in before confirming the email, the dashboard shows “Please confirm your email address to continue”. Use the resend option, then use the new link from your inbox.</p>
-
-      <h3>1.3 Other ways in</h3>
-      <ul>
-        <li><strong>Sign in with Google:</strong> the sign-in and register pages have a Google button. A first-time user is asked for gender, date of birth and the terms, and the email counts as confirmed. If the button is greyed out, Google sign-in is not switched on for this site.</li>
-        <li><strong>Forgot password:</strong> choose <em>Forgot your password?</em> on the sign-in page. A reset link arrives by email.</li>
-        <li><strong>Language and theme:</strong> the header has an English / Hindi switch and a light / dark button. The site starts in the light theme.</li>
-      </ul>
-
-      <h3>1.4 Things to try on the sign-in and sign-up pages</h3>
-      <ul class="check">
-        <li><label><input type="checkbox"><span>A wrong password says “Email or password is incorrect” and does not say whether the email exists.</span></label></li>
-        <li><label><input type="checkbox"><span>After 5 wrong passwords the account is locked for a short, growing time.</span></label></li>
-        <li><label><input type="checkbox"><span>Registering under 18 (woman) or under 21 (man) shows an age message.</span></label></li>
-        <li><label><input type="checkbox"><span>A weak password shows the strength bar and is refused.</span></label></li>
-        <li><label><input type="checkbox"><span>Registering the same email twice gives the same neutral message, and a “you already have an account” email arrives.</span></label></li>
-        <li><label><input type="checkbox"><span>Both pages fit on one screen with no scrolling on a normal laptop.</span></label></li>
-      </ul>
     </section>
 
     <!-- ============================================================ 2 -->
     <section id="profile">
-      <h2 class="sec">2. Build the profile <span class="tag">Part B</span></h2>
-      <p class="sec-sub">Still as Member one. On the dashboard press <strong>Continue your profile</strong>. The wizard saves as you type, so there is no Save button. Look for “Saved” near the top of the form.</p>
-
-      <h3>2.1 The steps and what each needs</h3>
-      <p>A step shows a tick only when every required field is filled. Required fields are marked with *.</p>
-      <div class="tw"><table>
-        <thead><tr><th>Step</th><th>Required</th><th>Example</th></tr></thead>
-        <tbody>
-          <tr><td>Basics</td><td>First name, height, marital status</td><td>Rohan, 178 cm, Never married</td></tr>
-          <tr><td>Background</td><td>Religion, mother tongue, city, state</td><td>Hindu, Hindi, Gurgaon, Haryana</td></tr>
-          <tr><td>Education and career</td><td>Highest education, profession</td><td>B.Tech, Software engineer</td></tr>
-          <tr><td>Family</td><td>Family type</td><td>Nuclear</td></tr>
-          <tr><td>Lifestyle</td><td>Diet, smoking, drinking</td><td>Vegetarian, Never, Never</td></tr>
-          <tr><td>Values and life plans</td><td>Marriage timeline, wants kids, living with family</td><td>Within 1 year, Open, Yes</td></tr>
-          <tr><td>About you</td><td>“About me” of <strong>at least 50 characters</strong></td><td>A few honest sentences</td></tr>
-          <tr><td>Photos</td><td>At least one photo that has finished processing</td><td>See the next part</td></tr>
-        </tbody>
-      </table></div>
-      <div class="note info"><span class="t">About you needs 50 characters</span><p>A short bio leaves the step without a tick. A counter under the box shows how many characters are still needed. The first name you type in Basics becomes your name across the site.</p></div>
-      <p>Fill in the steps in order with <strong>Next</strong> and <strong>Back</strong>. You can leave and come back later. The wizard reopens at the first unfinished step.</p>
-
-      <h3>2.2 Upload photos</h3>
+      <h2 class="sec">2. Fill in the profile <span class="tag">Member</span></h2>
+      <p class="sec-sub">On the Dashboard press <strong>Continue your profile</strong>. Your answers save by themselves as you type.</p>
       <ol class="steps">
-        <li>In the <strong>Photos</strong> step choose one or two clear pictures of a face. They must be JPEG, PNG or WebP, at least 200 × 200 pixels and no larger than 10 MB. The first photo is the main one.</li>
-        <li>The photo first shows <strong>Processing…</strong>.
-          <span class="expect"><b>Result:</b> within about two minutes it changes to <b>Awaiting review</b>. The site is resizing the picture and removing hidden location data.</span>
+        <li>Complete each step in the list on the left. A step gets a tick when its required fields (marked with *) are filled:
+          <div class="tw"><table>
+            <thead><tr><th>Step</th><th>Fill in</th></tr></thead>
+            <tbody>
+              <tr><td>Basics</td><td>First name, height (for example 178), marital status</td></tr>
+              <tr><td>Background</td><td>Religion Hindu, mother tongue Hindi, a city and a state</td></tr>
+              <tr><td>Education and career</td><td>Highest education, profession</td></tr>
+              <tr><td>Family</td><td>Family type</td></tr>
+              <tr><td>Lifestyle</td><td>Diet, smoking, drinking</td></tr>
+              <tr><td>Values and life plans</td><td>Marriage timeline, wants kids, living with family</td></tr>
+              <tr><td>About you</td><td>Write <strong>at least 50 characters</strong> about yourself. A counter shows how many are left.</td></tr>
+              <tr><td>Photos</td><td>Upload one or two pictures (JPEG, PNG or WebP)</td></tr>
+            </tbody>
+          </table></div>
         </li>
-      </ol>
-      <div class="note warn"><span class="t">Still “Processing…” after 5 minutes?</span><p>Reload the page once. If it is still stuck, tell the owner and say which member it was.</p></div>
-
-      <h3>2.3 Review and submit</h3>
-      <ol class="steps">
-        <li>Open the last step, <strong>Review and submit</strong>. It lists any step that is still missing.</li>
-        <li>Press <strong>Submit for review</strong>.
-          <span class="expect"><b>Result:</b> “Submitted for review. Our team is reading your profile now. This usually takes up to 48 hours.” The profile is locked until the admin answers.</span>
+        <li>After you upload a photo it shows <strong>Processing…</strong>. Wait one or two minutes until it says <strong>Awaiting review</strong>.</li>
+        <li>Open the last step, <strong>Review and submit</strong>, and press <strong>Submit for review</strong>.
+          <span class="expect"><b>You will see:</b> “Submitted for review”. Now the admin has to approve.</span>
         </li>
       </ol>
     </section>
 
     <!-- ============================================================ 3 -->
     <section id="admin-profile">
-      <h2 class="sec">3. Admin: approve the profile and photos <span class="tag">Part C</span></h2>
-      <p class="sec-sub">Now play the admin. Open the admin address in a <strong>different</strong> browser window from your members.</p>
-
-      <h3>3.1 Sign in to the admin console</h3>
+      <h2 class="sec">3. Admin: approve the profile and photo <span class="tag">Admin</span></h2>
+      <p class="sec-sub">Open the admin website in a different window.</p>
       <ol class="steps">
-        <li>Open <strong>https://marchmakeradmin.vercel.app</strong>.</li>
-        <li>Sign in with <code>admin@example.com</code> and <code>Admin@12345</code>.
-          <span class="expect"><b>Result:</b> the console opens with a menu down the left. Admin accounts normally need an authenticator code. If it asks for one on this test site, tell the owner.</span>
+        <li>Go to <code>https://marchmakeradmin.vercel.app</code> and sign in with <code>admin@example.com</code> and <code>Admin@12345</code>.</li>
+        <li>In the left menu press <strong>Profile review</strong>, open Rohan's profile, read it and press <strong>Approve</strong>.</li>
+        <li>In the left menu press <strong>Photo review</strong> and press <strong>Approve</strong> on his photo.
+          <span class="expect"><b>You will see:</b> the items leave the waiting list. On the member website, Rohan's Dashboard now asks him to verify his identity.</span>
         </li>
       </ol>
-
-      <h3>3.2 Approve the profile</h3>
-      <ol class="steps">
-        <li>In the left menu choose <strong>Profile review</strong>. Rohan's profile is in the queue.</li>
-        <li>Open it and read every section.</li>
-        <li>Press <strong>Approve</strong> (shortcut <kbd>a</kbd>). To send it back instead press <strong>Request changes</strong> (<kbd>c</kbd>), pick the steps to revisit and write a short note.
-          <span class="expect"><b>Result:</b> the status becomes approved. On the member side the dashboard moves on to verification.</span>
-        </li>
-      </ol>
-
-      <h3>3.3 Approve the photo</h3>
-      <ol class="steps">
-        <li>Choose <strong>Photo review</strong> in the menu.</li>
-        <li>Each pending photo has <strong>Approve</strong> and <strong>Reject</strong> buttons. Reject asks for a reason. Approve it.
-          <span class="expect"><b>Result:</b> the photo leaves the queue. Members only ever see approved photos, and other members see them blurred until an introduction allows more.</span>
-        </li>
-      </ol>
-      <p>Also try <strong>Request changes</strong> once on a profile, check that the member sees your note, fix it as the member and submit again.</p>
     </section>
 
     <!-- ============================================================ 4 -->
     <section id="verify">
-      <h2 class="sec">4. ID verification <span class="tag">Part D</span></h2>
-      <p class="sec-sub">This opens only after the profile is approved. No outside ID service is connected, so a person at the admin console checks the pictures by hand.</p>
-
-      <h3>4.1 Member uploads the documents</h3>
+      <h2 class="sec">4. Verify the ID <span class="tag">Member + Admin</span></h2>
+      <h3>As Member one</h3>
       <ol class="steps">
-        <li>As Rohan, refresh the dashboard and press <strong>Verify your identity</strong> (or open <code>/verification</code>).</li>
-        <li><strong>Choose the ID type</strong> (Aadhaar masked, PAN card, Passport, Driving licence or Voter ID) and enter the <strong>last 4 characters</strong> of the number. The full number is never asked for. Make up the characters.</li>
-        <li><strong>Upload the front</strong> of the ID, then the <strong>back</strong>. Use any JPEG, PNG or WebP picture from 2 KB to 8 MB. It does not have to be a real document.
-          <span class="expect"><b>Result:</b> each box shows a green “done” mark. (The file chooser goes back to “No file chosen”. That is normal. Look for the green mark.)</span>
-        </li>
-        <li><strong>Selfie.</strong> Press <strong>Open camera</strong>, or <strong>Upload a photo instead</strong> if there is no camera.</li>
-        <li>When all three show done, press <strong>Submit for verification</strong>.
-          <span class="expect"><b>Result:</b> the page says your verification is being reviewed.</span>
-        </li>
+        <li>On the Dashboard press <strong>Verify your identity</strong>.</li>
+        <li>Choose an ID type (for example PAN card) and type any 4 characters for the last 4 characters of the number.</li>
+        <li>Upload a picture for the <strong>front</strong> and one for the <strong>back</strong>. Any sample picture works. Each box shows a green “done” mark.</li>
+        <li>For the <strong>selfie</strong> press <strong>Open camera</strong>, or <strong>Upload a photo instead</strong>.</li>
+        <li>Press <strong>Submit for verification</strong>.</li>
       </ol>
-
-      <h3>4.2 Admin reviews</h3>
+      <h3>As the admin</h3>
       <ol class="steps">
-        <li>In the admin console open <strong>Verification</strong> and open Rohan's case.</li>
-        <li>Look at the front, back and selfie. Tick the checklist items you agree with: name matches the profile, date of birth matches, selfie matches the document photo, document is not expired, document looks genuine.</li>
-        <li>Press <strong>Approve</strong>. You can also <strong>Reject</strong> or ask for a re-upload of specific items.
-          <span class="expect"><b>Result:</b> on the member side the ID badge is earned and the journey moves to <strong>Matching</strong>. Every view of an ID image by staff is logged.</span>
+        <li>In the left menu press <strong>Verification</strong> and open Rohan's case.</li>
+        <li>Look at the pictures, tick the checklist items and press <strong>Approve</strong>.
+          <span class="expect"><b>You will see:</b> Rohan's Dashboard now shows <strong>Matching</strong>.</span>
         </li>
       </ol>
     </section>
 
     <!-- ============================================================ 5 -->
     <section id="prefs">
-      <h2 class="sec">5. Preferences and assessments <span class="tag">Part E</span></h2>
-      <p class="sec-sub">The matching engine needs to know what each person looks for.</p>
-
-      <h3>5.1 Set preferences</h3>
+      <h2 class="sec">5. Set preferences <span class="tag">Member</span></h2>
       <ol class="steps">
-        <li>As Rohan open the dashboard and press <strong>Your preferences</strong> (<code>/preferences</code>).</li>
-        <li>Keep it <strong>wide</strong> so a match is likely: age 18 to 35, Religion Hindu, Mother tongue Hindi, Diet Vegetarian.</li>
-        <li>For each, choose whether it is a <strong>must-have</strong> or <strong>flexible</strong>, and how much it matters (1 to 3). A must-have removes anyone who fails it. A flexible one only changes the score.
-          <span class="expect"><b>Result:</b> an estimate of how many people fit appears. Saving keeps it.</span>
-        </li>
+        <li>As Rohan, on the Dashboard press <strong>Your preferences</strong>.</li>
+        <li>Set a wide range so a match is likely: age <strong>18 to 35</strong>, religion <strong>Hindu</strong>, mother tongue <strong>Hindi</strong>, diet <strong>Vegetarian</strong>.</li>
+        <li>Mark each one as <strong>flexible</strong> (not “must-have”), then save.</li>
       </ol>
-      <div class="note warn"><span class="t">Use flexible preferences while testing</span><p>Every must-have is a hard filter. A strict one, or one that depends on spelling (like a city), can silently remove the only other person in your test and give you no match at all.</p></div>
-
-      <h3>5.2 Assessments (optional)</h3>
-      <p>On the dashboard open <strong>Assessments</strong> and finish one. The answers add to the match score. Skipping them is fine.</p>
     </section>
 
     <!-- ============================================================ 6 -->
     <section id="member2">
-      <h2 class="sec">6. Member two <span class="tag">Part F</span></h2>
-      <p class="sec-sub">A match needs another person. Repeat sections 1 to 5 for a second member in <strong>another private window</strong>.</p>
+      <h2 class="sec">6. Do the same for Member two <span class="tag">Member + Admin</span></h2>
+      <p class="sec-sub">Open another private window. Member two is a woman.</p>
       <ol class="steps">
-        <li><strong>Register</strong> as a <strong>woman</strong>: first name Pooja, date of birth 5 May 2002, a different email address, and password <code>Passw0rd-Test2</code>. Confirm her email from the link (section 1).</li>
-        <li><strong>Profile:</strong> fill it with matching details: Hindu, Hindi, Vegetarian, a city and state, and a bio of 50 or more characters. Upload a photo and submit (section 2).</li>
-        <li><strong>Admin:</strong> approve her profile and her photo (section 3).</li>
-        <li><strong>Verification:</strong> upload ID and selfie, then approve it in the admin console (section 4).</li>
-        <li><strong>Preferences:</strong> age 20 to 40, Hindu, Hindi, Vegetarian, all flexible (section 5).
-          <span class="expect"><b>Result:</b> both members now show journey <strong>Matching</strong> on their dashboards.</span>
+        <li><strong>Sign up</strong> (step 1) with first name <strong>Pooja</strong>, I am <strong>A woman</strong>, date of birth <strong>5 May 2002</strong>, a <strong>different</strong> email address and password <code>Passw0rd-Test2</code>. Confirm her email.</li>
+        <li><strong>Fill the profile</strong> (step 2) with Hindu, Hindi, Vegetarian, a city and state, a bio of 50 or more characters and a photo. Submit it.</li>
+        <li><strong>Admin approves</strong> her profile and photo (step 3).</li>
+        <li><strong>Verify her ID</strong> and let the admin approve it (step 4).</li>
+        <li><strong>Set her preferences</strong> (step 5): age 20 to 40, Hindu, Hindi, Vegetarian, all flexible.
+          <span class="expect"><b>You will see:</b> both Rohan and Pooja show <strong>Matching</strong> on their Dashboards.</span>
         </li>
       </ol>
     </section>
 
     <!-- ============================================================ 7 -->
-    <section id="matching">
-      <h2 class="sec">7. Matching <span class="tag">Part G</span></h2>
-      <p class="sec-sub">The system suggests pairs, then a person checks and approves each one. Nothing reaches a member before that.</p>
-
-      <h3>7.1 How a pair is chosen</h3>
-      <ul>
-        <li><strong>Who is eligible:</strong> an active member with an approved profile, at least one approved photo and an approved ID.</li>
-        <li><strong>Hard filters first:</strong> every must-have, in both directions, plus blocks and pairs already rejected.</li>
-        <li><strong>Score from 0 to 1</strong> from three parts: how well each meets the other's preferences (35%), assessments (30%) and life plans such as timeline, children and living arrangements (35%).</li>
-        <li><strong>Cut-off:</strong> pairs below <strong>0.55</strong> are not suggested. Members never see the number. They see plain reasons such as “same city”.</li>
-      </ul>
-
-      <h3>7.2 Make the wait short (do this first)</h3>
-      <p>After an admin approves a match there is an <strong>undo window</strong> before it reaches the members. It is 10 minutes by default. For a quick test make it short.</p>
+    <section id="match">
+      <h2 class="sec">7. Admin: match the two members <span class="tag">Admin</span></h2>
       <ol class="steps">
-        <li>In the admin console open <strong>Matching settings</strong> (the last menu item).</li>
-        <li>In the <strong>Review</strong> card set <strong>Undo window (minutes)</strong> to <code>0</code> and save.</li>
-      </ol>
-
-      <h3>7.3 Run matching</h3>
-      <ol class="steps">
-        <li>Open <strong>Match review</strong> and press <strong>Run matching now</strong>.
-          <span class="expect"><b>Result:</b> a summary of how many suggestions were created. Rohan and Pooja should appear as a pair with a score.</span>
+        <li>In the admin website press <strong>Matching settings</strong> (last item in the left menu). In the <strong>Review</strong> box set <strong>Undo window (minutes)</strong> to <code>0</code> and save. This makes the match arrive quickly.</li>
+        <li>Press <strong>Match review</strong>, then <strong>Run matching now</strong>. Rohan and Pooja should appear as a pair.
+          <span class="expect"><b>Not appearing?</b> Make both members' preferences wider and check both were approved in steps 3 and 4. You can also press <strong>Manual introduction</strong> to pair them yourself.</span>
+        </li>
+        <li>Open the pair, read the details and press <strong>Approve</strong>, then confirm.
+          <span class="expect"><b>You will see:</b> after a minute or two, an introduction appears on both members' Dashboards and under <strong>Your introductions</strong>.</span>
         </li>
       </ol>
-      <div class="note warn"><span class="t">No suggestion for your two members?</span>
-        <ul>
-          <li>Loosen both members' preferences. Make sure nothing is a must-have that the other person does not meet.</li>
-          <li>Check both have an approved profile, photo and ID. Without all three they are not in the pool.</li>
-          <li>The score may be under 0.55. Finish an assessment on both, or lower <strong>Minimum fit to suggest</strong> in Matching settings.</li>
-          <li>Or skip the engine: on the Match review page press <strong>Manual introduction</strong>. You need each member's ID, which is the long code at the end of their page address under <strong>Members</strong>.</li>
-        </ul>
-      </div>
-
-      <h3>7.4 Review and approve the match</h3>
-      <ol class="steps">
-        <li>Open the Rohan and Pooja suggestion.</li>
-        <li>Read both profiles, the reasons, and the <strong>“why we chose them”</strong> text. You can edit that text. It is checked for things that are not allowed, such as contact details.</li>
-        <li>Press <strong>Approve</strong> (shortcut <kbd>a</kbd>) and confirm. Other choices are <strong>Reject</strong> (<kbd>r</kbd>), <strong>Snooze</strong> (<kbd>s</kbd>) and <strong>Escalate</strong> (<kbd>e</kbd>).
-          <span class="expect"><b>Result:</b> the match is approved. After the undo window it is released to both members. With the window at 0 this takes about a minute or two.</span>
-        </li>
-      </ol>
-      <p>Some pairs need two different approvers, for example when a member has a past suspension. The page says so when that applies.</p>
     </section>
 
     <!-- ============================================================ 8 -->
     <section id="pay">
-      <h2 class="sec">8. Plans and credits (test payment) <span class="tag">Part H</span></h2>
-      <p class="sec-sub">Saying yes to an introduction holds one credit. A free member has none. Both members need a credit, and the money is test money.</p>
-
-      <h3>8.1 Pay with the test card</h3>
+      <h2 class="sec">8. Add a credit (test payment) <span class="tag">Member</span></h2>
+      <p class="sec-sub">To say yes to an introduction a member needs one credit. The payment is a test, so no real money is used. Do this for both Rohan and Pooja.</p>
       <ol class="steps">
-        <li>As Rohan open <strong>Account</strong>, then <strong>Billing</strong> (<code>/billing</code>).</li>
-        <li>Choose a plan, for example <strong>Premium</strong>, press its button, or under <strong>Or buy single introductions</strong> press <strong>Buy</strong> on a pack. If it asks for a state for tax, choose any state.</li>
-        <li>You are taken to a <strong>Stripe</strong> payment page. Enter these test details:
+        <li>Press <strong>Account</strong>, then <strong>Billing</strong>.</li>
+        <li>Choose a plan, for example <strong>Premium</strong>, or press <strong>Buy</strong> on a single introduction pack. Choose any state if asked.</li>
+        <li>On the payment page enter the test card:
           <div class="tw"><table>
             <thead><tr><th>Field</th><th>Enter</th></tr></thead>
             <tbody>
-              <tr><td>Email</td><td>Any email</td></tr>
               <tr><td>Card number</td><td><code>4242 4242 4242 4242</code></td></tr>
-              <tr><td>Expiry</td><td>Any date in the future, for example <code>12 / 34</code></td></tr>
+              <tr><td>Expiry</td><td>Any future date, for example <code>12 / 34</code></td></tr>
               <tr><td>CVC</td><td>Any 3 digits, for example <code>123</code></td></tr>
-              <tr><td>Name and country</td><td>Any name, India</td></tr>
+              <tr><td>Name and email</td><td>Anything</td></tr>
             </tbody>
           </table></div>
         </li>
         <li>Press <strong>Pay</strong> or <strong>Subscribe</strong>.
-          <span class="expect"><b>Result:</b> you return to Billing, which says “Confirming your payment…”. Then your credits show, and your plan shows as active. An invoice appears in the billing history.</span>
+          <span class="expect"><b>You will see:</b> you return to Billing, it says “Confirming your payment…”, and then your credits appear.</span>
         </li>
-        <li>Do the same as Pooja.</li>
       </ol>
-      <div class="note warn"><span class="t">Credits not showing?</span><p>Reload Billing after a minute. The site also checks payments on its own every 10 minutes. If nothing has appeared after 15 minutes, tell the owner.</p></div>
-      <p>Open the invoice from the history. It is a printable tax invoice with the GST split and the rupee sign.</p>
     </section>
 
     <!-- ============================================================ 9 -->
-    <section id="intro">
-      <h2 class="sec">9. Introduction and chat <span class="tag">Part I</span></h2>
-      <p class="sec-sub">Use each member's own private window.</p>
-
-      <h3>9.1 Say yes</h3>
+    <section id="chat">
+      <h2 class="sec">9. Say yes and chat <span class="tag">Member</span></h2>
       <ol class="steps">
-        <li>As Rohan open <strong>Your introductions</strong> (<code>/introductions</code>). You see one card: the other person's name, age, city and profession, why you were matched, and a blurred photo. A bell notification may also show.</li>
-        <li>Press <strong>Say yes</strong>. Pressing <strong>Not for me</strong> would ask for a reason instead.
-          <span class="expect"><b>Result:</b> “You said yes. We will tell you when they respond.” One credit is <em>held</em>, not spent. It comes straight back if the other person declines or does not reply in 7 days.</span>
+        <li>As Rohan press <strong>Your introductions</strong>. You see Pooja's card and why you were matched.</li>
+        <li>Press <strong>Say yes</strong>.
+          <span class="expect"><b>You will see:</b> “You said yes. We will tell you when they respond.”</span>
         </li>
-        <li>As Pooja open her introductions and press <strong>Say yes</strong> too.
-          <span class="expect"><b>Result:</b> the introduction shows <strong>You are connected</strong>. Both credits are now spent, and more of each profile and photo unlocks.</span>
+        <li>As Pooja open <strong>Your introductions</strong> and press <strong>Say yes</strong> too.
+          <span class="expect"><b>You will see:</b> “You are connected”.</span>
+        </li>
+        <li>Press <strong>Messages</strong>, write a first note and send it. Switch to the other member and reply.
+          <span class="expect"><b>You will see:</b> the messages in the conversation for both people. The whole journey is complete.</span>
         </li>
       </ol>
-      <div class="note info"><span class="t">“You need an introduction credit”?</span><p>You have no credit. Complete the payment in section 8, wait for the credit to show on Billing, then try again.</p></div>
+    </section>
 
-      <h3>9.2 Message each other</h3>
-      <ol class="steps">
-        <li>Open <strong>Messages</strong> (<code>/messages</code>) as either member and send a first note. It has a minimum and maximum length.</li>
-        <li>Switch to the other member and reply.
-          <span class="expect"><b>Result:</b> your messages appear in the conversation for both people. Contact details are not shared automatically.</span>
-        </li>
-      </ol>
-      <p>Also try, on the introduction, <strong>Report</strong> and <strong>Block</strong> (these go to the admin <strong>Moderation</strong> queue), and the feedback requests the site sends later.</p>
-
-      <h3>9.3 Watch it from the admin side</h3>
+    <!-- ============================================================ stuck -->
+    <section id="stuck">
+      <h2 class="sec">If you get stuck <span class="tag">Help</span></h2>
       <ul>
-        <li><strong>Introductions monitor</strong> shows every introduction and its state.</li>
-        <li><strong>Payments</strong>, <strong>Subscriptions</strong> and <strong>Invoices</strong> list the test purchases.</li>
-        <li><strong>Audit log</strong> records who approved what and when.</li>
+        <li><strong>No confirmation email:</strong> check spam and wait a few minutes.</li>
+        <li><strong>A photo still says Processing…:</strong> reload the page after a few minutes.</li>
+        <li><strong>No match appears:</strong> make both members' preferences wider, or use <strong>Manual introduction</strong> in Match review.</li>
+        <li><strong>“You need an introduction credit”:</strong> finish step 8 for that member and wait for the credit to show on Billing.</li>
+        <li><strong>The admin asks for a code:</strong> tell the person who sent you this guide.</li>
       </ul>
-    </section>
-
-    <!-- ============================================================ 10 -->
-    <section id="more">
-      <h2 class="sec">10. Everything else worth checking <span class="tag">Part J</span></h2>
-      <p class="sec-sub">Tick items as you go. Your ticks are saved in this browser.</p>
-
-      <h3>Member site</h3>
-      <ul class="check" id="chk-member">
-        <li><label><input type="checkbox"><span><strong>Public pages:</strong> Home, How it works, Human review, Safety, Pricing and FAQ open without errors. Prices fit inside their cards at any window size.</span></label></li>
-        <li><label><input type="checkbox"><span><strong>Notifications:</strong> the bell in the header lists events and can mark them as read.</span></label></li>
-        <li><label><input type="checkbox"><span><strong>Settings:</strong> change language, theme and notification choices. Request a data export (a link by email downloads a zip). Schedule account deletion (a 14-day grace period that can be cancelled).</span></label></li>
-        <li><label><input type="checkbox"><span><strong>Invite (referrals):</strong> your invite link, wallet and rewards, under Account, then Invite.</span></label></li>
-        <li><label><input type="checkbox"><span><strong>Help (support):</strong> raise a ticket under Account, then Help. Find it in the admin Support inbox and reply.</span></label></li>
-        <li><label><input type="checkbox"><span><strong>Safety centre:</strong> tips, and report or block from an introduction.</span></label></li>
-        <li><label><input type="checkbox"><span><strong>Hindi:</strong> switch the language and check the main pages are translated.</span></label></li>
-        <li><label><input type="checkbox"><span><strong>Dark theme:</strong> use the sun and moon button, refresh, and confirm the choice is remembered.</span></label></li>
-        <li><label><input type="checkbox"><span><strong>Small screens:</strong> shrink the window to phone width. The menu folds into a button and nothing scrolls sideways.</span></label></li>
-        <li><label><input type="checkbox"><span><strong>Profile editing:</strong> change a field while the profile is still a draft. It saves quietly with no pop-up.</span></label></li>
-      </ul>
-
-      <h3>Admin console</h3>
-      <div class="tw"><table>
-        <thead><tr><th>Menu item</th><th>What to look at</th></tr></thead>
-        <tbody>
-          <tr><td>Dashboard, Insights</td><td>Counts of members, queues and funnel steps.</td></tr>
-          <tr><td>Members</td><td>Search, open a member, see their journey. Use it to find member IDs.</td></tr>
-          <tr><td>Profile review, Photo review, Verification</td><td>The three queues used above.</td></tr>
-          <tr><td>Match review, Matching settings</td><td>Suggestions, approvals, the score cut-off, the undo window and limits.</td></tr>
-          <tr><td>Introductions monitor</td><td>Every introduction and its state.</td></tr>
-          <tr><td>Moderation, Appeals</td><td>Reports from members and appeals against decisions.</td></tr>
-          <tr><td>Support inbox</td><td>Tickets with response deadlines.</td></tr>
-          <tr><td>Payments, Subscriptions, Invoices, Payment webhooks, Coupons, Plans and packs</td><td>The money side. Try a coupon at checkout. Look at a plan's price.</td></tr>
-          <tr><td>Referrals</td><td>Referral rewards and wallet adjustments.</td></tr>
-          <tr><td>Question banks, E-guides, Success stories, FAQ, Legal documents</td><td>Content the team manages.</td></tr>
-          <tr><td>Notifications, Jobs and providers, Data requests, Operations settings, Feature flags, Experiments</td><td>System controls, and data export and deletion requests.</td></tr>
-          <tr><td>Team, Roles and permissions, Audit log</td><td>Staff accounts, what each role may do and the audit trail. (Please only look.)</td></tr>
-        </tbody>
-      </table></div>
-    </section>
-
-    <!-- ============================================================ 11 -->
-    <section id="reference">
-      <h2 class="sec">11. Addresses and states <span class="tag">Reference</span></h2>
-      <div class="tw"><table>
-        <thead><tr><th>Who</th><th>Where</th><th>Login</th></tr></thead>
-        <tbody>
-          <tr><td>Admin</td><td><code>https://marchmakeradmin.vercel.app</code></td><td><code>admin@example.com</code> / <code>Admin@12345</code></td></tr>
-          <tr><td>Member one (you create)</td><td><code>https://marchmaker.vercel.app</code></td><td>the email and password you chose</td></tr>
-          <tr><td>Member two (you create)</td><td><code>https://marchmaker.vercel.app</code></td><td>the email and password you chose</td></tr>
-        </tbody>
-      </table></div>
-
-      <h3>The journey bar and the states behind it</h3>
-      <p>The dashboard shows: Account, Profile, Verification, Profile review, Matching, Introductions, Connected.</p>
-      <div class="tw"><table>
-        <thead><tr><th>State</th><th>How a member gets there</th></tr></thead>
-        <tbody>
-          <tr><td><span class="pill">registered</span></td><td>Created the account, email not yet confirmed.</td></tr>
-          <tr><td><span class="pill">email_verified</span></td><td>Confirmed the email, or signed in with Google.</td></tr>
-          <tr><td><span class="pill">profile_in_progress</span></td><td>Started the profile.</td></tr>
-          <tr><td><span class="pill">profile_submitted</span></td><td>Pressed Submit for review. Waiting on the admin.</td></tr>
-          <tr><td><span class="pill">profile_changes_requested</span></td><td>The admin asked for edits.</td></tr>
-          <tr><td><span class="pill">profile_approved</span></td><td>Profile approved. ID verification opens.</td></tr>
-          <tr><td><span class="pill">verification_pending</span></td><td>ID submitted. Waiting on the admin.</td></tr>
-          <tr><td><span class="pill">verification_rejected</span></td><td>ID refused. Upload again.</td></tr>
-          <tr><td><span class="pill">matching_active</span></td><td>Approved profile, photo and ID. In the matching pool.</td></tr>
-        </tbody>
-      </table></div>
-    </section>
-
-    <!-- ============================================================ 12 -->
-    <section id="trouble">
-      <h2 class="sec">12. If something looks wrong <span class="tag">Help</span></h2>
-      <div class="tw"><table>
-        <thead><tr><th>What you see</th><th>What to do</th></tr></thead>
-        <tbody>
-          <tr><td>The page loads slowly the first time, or an error shows once</td><td>The server may have been resting. Wait about a minute and reload.</td></tr>
-          <tr><td>No confirmation email</td><td>Check spam, wait 5 minutes, then tell the owner your address. Or use Sign in with Google.</td></tr>
-          <tr><td>“Please confirm your email address to continue”</td><td>Use the resend option, then the newest link in your inbox.</td></tr>
-          <tr><td>Photo stays on “Processing…”</td><td>Reload once. If it is still there after 5 minutes, tell the owner.</td></tr>
-          <tr><td>Verification upload shows nothing</td><td>Use a JPEG, PNG or WebP of 2 KB to 8 MB. Look for the green “done” mark, not the file chooser text.</td></tr>
-          <tr><td>Admin asks for an authenticator code</td><td>Tell the owner. On this test site it should not ask.</td></tr>
-          <tr><td>You see another member's name after signing in</td><td>Two members share one window. Use a private window per member, and sign out first.</td></tr>
-          <tr><td>No suggestion after “Run matching now”</td><td>See the checklist in section 7.3. Most often: no preferences saved, a strict must-have, or a score under 0.55.</td></tr>
-          <tr><td>Nothing reaches the members after approving a match</td><td>The undo window has not ended. Set it to 0 (section 7.2) and wait a minute or two, then reload.</td></tr>
-          <tr><td>“You need an introduction credit”</td><td>Complete the test payment (section 8). Reload Billing and wait for the credit.</td></tr>
-          <tr><td>Stripe page says the card was declined</td><td>Use exactly <code>4242 4242 4242 4242</code>, a future expiry and any CVC. Real cards do not work.</td></tr>
-          <tr><td>Google button is grey</td><td>Google sign-in is not switched on for this site. Use email sign-up.</td></tr>
-        </tbody>
-      </table></div>
-    </section>
-
-    <!-- ============================================================ 13 -->
-    <section id="report">
-      <h2 class="sec">13. How to report a problem <span class="tag">Help</span></h2>
-      <p>For each problem, please send the owner:</p>
-      <ul>
-        <li>which site (member or admin) and the page address,</li>
-        <li>which member you were signed in as,</li>
-        <li>what you pressed, what you expected and what happened,</li>
-        <li>the time it happened (so it can be found in the logs), and a screenshot if you can.</li>
-      </ul>
-    </section>
-
-    <!-- ============================================================ 14 -->
-    <section id="final">
-      <h2 class="sec">14. Final checklist <span class="tag">Sign-off</span></h2>
-      <p class="sec-sub">If you can tick every line, the main product works end to end.</p>
-      <div class="progress" id="final-progress"></div>
-      <ul class="check" id="chk-final">
-        <li><label><input type="checkbox"><span>Member one registered, confirmed the email and signed in.</span></label></li>
-        <li><label><input type="checkbox"><span>All eight profile steps show a tick and the profile was submitted.</span></label></li>
-        <li><label><input type="checkbox"><span>A photo went from Processing to Awaiting review.</span></label></li>
-        <li><label><input type="checkbox"><span>Admin signed in, approved the profile and approved the photo.</span></label></li>
-        <li><label><input type="checkbox"><span>ID and selfie were uploaded, submitted and approved by the admin.</span></label></li>
-        <li><label><input type="checkbox"><span>Preferences were saved and the dashboard shows Matching.</span></label></li>
-        <li><label><input type="checkbox"><span>Member two went through the same steps.</span></label></li>
-        <li><label><input type="checkbox"><span>The undo window was set to 0 and Run matching now created a suggestion for the pair.</span></label></li>
-        <li><label><input type="checkbox"><span>The admin approved the match and it appeared on both members' introductions.</span></label></li>
-        <li><label><input type="checkbox"><span>Both members paid with the Stripe test card and got credits.</span></label></li>
-        <li><label><input type="checkbox"><span>Both members said yes and the introduction shows “You are connected”.</span></label></li>
-        <li><label><input type="checkbox"><span>Messages were sent and received in both directions.</span></label></li>
-        <li><label><input type="checkbox"><span>The invoice opened as a PDF.</span></label></li>
-      </ul>
-      <footer class="end">Thank you for testing. Please keep this guide private: it contains the admin login for the test site.</footer>
+      <footer class="end">Please keep this guide private. It contains the admin login for the test site.</footer>
     </section>
   </main>
 </div>
