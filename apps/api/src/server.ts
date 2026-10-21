@@ -4,7 +4,7 @@ import { createApp } from './app';
 import { buildContext } from './context';
 import { createMailer } from './lib/mailer';
 import { createSms } from './lib/sms';
-import { loadEnv } from './config/env';
+import { loadEnv, staffMfaBypass } from './config/env';
 import { resolveKmsKeys } from './lib/keys';
 import { captureError, initSentry, flushSentry } from './lib/sentry';
 import { connectMongo, disconnectMongo, isMongoReady } from './db/connection';
@@ -15,6 +15,14 @@ async function main() {
   const env = await resolveKmsKeys(loadEnv());
   initSentry(env, 'api');
   const log = createLogger(env.LOG_LEVEL, env.NODE_ENV === 'development');
+
+  const mfaBypass = staffMfaBypass(env);
+  if (env.NODE_ENV === 'production' && mfaBypass.active) {
+    log.warn(
+      { until: mfaBypass.until?.toISOString() },
+      'SECURITY: staff can sign in WITHOUT an authenticator code until the date shown. Remove STAFF_MFA_REQUIRED=false and STAFF_MFA_OFF_UNTIL to require the code again.',
+    );
+  }
 
   let shuttingDown = false;
   await connectMongo(env.MONGODB_URI, log);

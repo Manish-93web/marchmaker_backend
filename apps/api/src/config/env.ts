@@ -23,6 +23,12 @@ const envSchema = z.object({
   /** How many proxies sit in front of the API and add to X-Forwarded-For. 1 when users reach Render directly; 2 when the site's Vercel rewrite forwards to Render. */
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
 
+  /**
+   * Production only: lets staff sign in without an authenticator code until this date (for example 2026-11-05). It must be
+   * no more than 14 days away, and every session started this way ends on that date. After it, codes are required again.
+   */
+  STAFF_MFA_OFF_UNTIL: z.string().optional(),
+
   CORS_ORIGINS: z
     .string()
     .default('http://localhost:5173,http://localhost:5174')
@@ -133,6 +139,24 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+const DAY_MS = 86_400_000;
+export const MAX_STAFF_MFA_OFF_DAYS = 14;
+
+/**
+ * Whether staff may sign in without an authenticator code right now. On a development machine, whenever
+ * STAFF_MFA_REQUIRED=false. In production, only until STAFF_MFA_OFF_UNTIL, so it cannot be left on by accident.
+ */
+export function staffMfaBypass(
+  env: Pick<Env, 'STAFF_MFA_REQUIRED' | 'NODE_ENV' | 'STAFF_MFA_OFF_UNTIL'>,
+  now: Date = new Date(),
+): { active: boolean; until?: Date } {
+  if (env.STAFF_MFA_REQUIRED) return { active: false };
+  if (env.NODE_ENV !== 'production') return { active: true };
+  const until = env.STAFF_MFA_OFF_UNTIL ? new Date(env.STAFF_MFA_OFF_UNTIL) : undefined;
+  if (!until || Number.isNaN(until.getTime()) || until <= now) return { active: false };
+  return { active: true, until };
+}
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = envSchema.safeParse(source);
   if (!parsed.success) {
@@ -159,7 +183,14 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       throw new Error('Mock WhatsApp or push providers are not allowed in production');
     }
     if (env.PAYMENTS_PROVIDER === 'mock') throw new Error('PAYMENTS_PROVIDER=mock is not allowed in production');
-    if (!env.STAFF_MFA_REQUIRED) throw new Error('STAFF_MFA_REQUIRED=false is not allowed in production');
+    if (!env.STAFF_MFA_REQUIRED) {
+      // Allowed only as a temporary, self-expiring exception: an end date no more than 14 days away (see staffMfaBypass).
+      const until = env.STAFF_MFA_OFF_UNTIL ? new Date(env.STAFF_MFA_OFF_UNTIL) : undefined;
+      const inWindow = !!until && !Number.isNaN(until.getTime()) && until.getTime() > Date.now() && until.getTime() <= Date.now() + MAX_STAFF_MFA_OFF_DAYS * DAY_MS;
+      if (!inWindow) {
+        throw new Error(`STAFF_MFA_REQUIRED=false is not allowed in production, except temporarily: set STAFF_MFA_OFF_UNTIL to a date within the next ${MAX_STAFF_MFA_OFF_DAYS} days (for example 2026-11-05)`);
+      }
+    }
     if (!env.COOKIE_SECURE) throw new Error('COOKIE_SECURE must be true in production');
 
     // Launch guards: anything that would silently do nothing, or run on a development default, is refused.

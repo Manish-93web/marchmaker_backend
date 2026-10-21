@@ -16,6 +16,7 @@ import type { AppContext } from '../context';
 import { audit, emit, logTransition } from '../lib/audit';
 import { AppError, badRequest, forbidden, unauthorized } from '../lib/errors';
 import { verifyGoogleIdToken } from '../lib/googleAuth';
+import { staffMfaBypass } from '../config/env';
 import { dummyHash, hashPassword, verifyPassword } from '../lib/passwords';
 import { hmac, randomOtp, randomToken, safeEqual, sha256 } from '../lib/secrets';
 import { AuthToken, OtpCode } from '../models/auth';
@@ -243,7 +244,9 @@ export async function login(
 
   const staff = isStaff(user.roles as Role[]);
   let mfa = false;
-  const mfaOff = staff && !ctx.env.STAFF_MFA_REQUIRED; // development only: the env check refuses this in production
+  // Development, or a production switch that expires on its own (see staffMfaBypass). Sessions started this way end at the deadline.
+  const bypass = staff ? staffMfaBypass(ctx.env) : { active: false, until: undefined as Date | undefined };
+  const mfaOff = bypass.active;
   if (mfaOff) {
     mfa = true;
     ctx.log.warn({ userId: String(user._id) }, 'staff sign-in without an authenticator code (STAFF_MFA_REQUIRED=false)');
@@ -276,7 +279,7 @@ export async function login(
   );
   await ctx.loginLimiter.reset(`login:${sha256(input.email)}`);
 
-  const tokens = await issueSession(ctx, user, client, { mfa });
+  const tokens = await issueSession(ctx, user, client, { mfa, ...(mfaOff && bypass.until ? { absoluteExpiresAt: bypass.until } : {}) });
   await audit(undefined, { action: 'auth.login', actorId: user._id, actorRoles: user.roles, subjectType: 'user', subjectId: String(user._id) });
   return {
     tokens,
